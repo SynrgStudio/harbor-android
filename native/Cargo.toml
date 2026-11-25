@@ -1,0 +1,22 @@
+[package]
+name = "harbor_torrent"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+librqbit = { version = "9.1", default-features = false, features = ["http-api", "rust-tls", "tracing-subscriber-utils"] }
+jni = { version = "0.21", default-features = false }
+tokio = { version = "1", features = ["rt-multi-thread", "net", "macros"] }
+anyhow = "1"
+librqbit-dualstack-sockets = "0.7"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 4
+strip = true
+panic = "unwind"

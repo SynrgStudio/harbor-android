@@ -1,0 +1,204 @@
+package com.synrg.harbor.tmdb
+
+import com.synrg.harbor.core.HttpException
+import com.synrg.harbor.core.await
+import com.synrg.harbor.data.CastMember
+import com.synrg.harbor.data.Details
+import com.synrg.harbor.data.Episode
+import com.synrg.harbor.data.MediaItem
+import com.synrg.harbor.data.MediaType
+import com.synrg.harbor.data.SeasonInfo
+import com.synrg.harbor.data.SettingsRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import okhttp3.CacheControl
+import java.util.concurrent.TimeUnit
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.CoroutineContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.json.Json
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
+
+class MissingTmdbKeyException : IOException("Falta la clave de TMDB")
+
+/**
+ * Coroutine context marker: requests made under it are answered only from the HTTP disk cache,
+ * even if stale, and fail fast otherwise. Used to paint screens instantly before refreshing.
+ */
+object CacheOnly : AbstractCoroutineContextElement(CacheOnly.Key) {
+    // A separate key object: using CacheOnly itself as the key reads it before it exists.
+    object Key : CoroutineContext.Key<CacheOnly>
+}
+
+private val STALE_OK = CacheControl.Builder().onlyIfCached().maxStale(30, TimeUnit.DAYS).build()
+
+class TmdbRepository(
+    private val http: OkHttpClient,
+    private val json: Json,
+    private val settings: SettingsRepository,
+) {
+    private val detailsCache = ConcurrentHashMap<String, Details>()
+    private val seasonCache = ConcurrentHashMap<String, List<Episode>>()
+    private val genreMutex = Mutex()
+    private var genres: Map<Int, String>? = null
+    private var genresLanguage: String? = null
+
+    private suspend fun <T> get(path: String, strategy: DeserializationStrategy<T>, vararg params: Pair<String, String?>): T {
+        val s = settings.current
+        val key = s.effectiveTmdbKey
+        if (key.isBlank()) throw MissingTmdbKeyException()
+        val bearer = key.startsWith("eyJ")
+        val url = "https://api.themoviedb.org/3/$path".toHttpUrl().newBuilder().apply {
+            addQueryParameter("language", s.language)
+            params.forEach { (k, v) -> if (v != null) addQueryParameter(k, v) }
+            if (!bearer) addQueryParameter("api_key", key)
+        }.build()
+        val request = Request.Builder().url(url).apply {
+            if (bearer) header("Authorization", "Bearer $key")
+            if (currentCoroutineContext()[CacheOnly.Key] != null) cacheControl(STALE_OK)
+        }.build()
+        val response = http.newCall(request).await()
+        return withContext(Dispatchers.Default) {
+            response.use {
+                if (!it.isSuccessful) throw HttpException(it.code, "TMDB respondió ${it.code}")
+                json.decodeFromString(strategy, it.body.string())
+            }
+        }
+    }
+
+    private val imageLanguages: String
+        get() = settings.current.language.substringBefore('-').let { if (it == "en") "en,null" else "$it,en,null" }
+
+    suspend fun trending(type: String = "all", page: Int = 1): List<MediaItem> =
+        get("trending/$type/week", TmdbPage.serializer(), "page" to page.toString()).results.mapNotNull { it.toMediaItem(null) }
+
+    suspend fun list(type: MediaType, path: String, page: Int = 1, vararg extra: Pair<String, String?>): List<MediaItem> =
+        get("${type.tmdb}/$path", TmdbPage.serializer(), "page" to page.toString(), "region" to settings.current.region, *extra)
+            .results.mapNotNull { it.toMediaItem(type) }
+
+    suspend fun discover(type: MediaType, vararg params: Pair<String, String?>): List<MediaItem> =
+        get("discover/${type.tmdb}", TmdbPage.serializer(), *params).results.mapNotNull { it.toMediaItem(type) }
+
+    suspend fun search(query: String, page: Int = 1): List<MediaItem> =
+        get("search/multi", TmdbPage.serializer(), "query" to query, "page" to page.toString(), "include_adult" to "false")
+            .results.mapNotNull { it.toMediaItem(null) }
+
+    suspend fun logo(type: MediaType, id: Int): String? =
+        get("${type.tmdb}/$id/images", TmdbImages.serializer(), "include_image_language" to imageLanguages).bestLogo()
+
+    suspend fun genreNames(): Map<Int, String> = genreMutex.withLock {
+        val lang = settings.current.language
+        genres?.takeIf { genresLanguage == lang }?.let { return it }
+        val movie = get("genre/movie/list", TmdbGenreList.serializer()).genres
+        val tv = get("genre/tv/list", TmdbGenreList.serializer()).genres
+        (movie + tv).associate { it.id to it.name }.also {
+            genres = it
+            genresLanguage = lang
+        }
+    }
+
+    suspend fun details(type: MediaType, id: Int): Details {
+        val cacheKey = "${type.tmdb}:$id:${settings.current.language}"
+        detailsCache[cacheKey]?.let { return it }
+        val append = if (type == MediaType.Movie) "credits,images,recommendations,external_ids,release_dates"
+        else "credits,images,recommendations,external_ids,content_ratings"
+        val d = get(
+            "${type.tmdb}/$id", TmdbDetails.serializer(),
+            "append_to_response" to append,
+            "include_image_language" to imageLanguages,
+        )
+        val region = settings.current.region
+        val certification = if (type == MediaType.Movie) {
+            val byCountry = d.releaseDates?.results.orEmpty()
+            (byCountry.firstOrNull { it.country == region } ?: byCountry.firstOrNull { it.country == "US" })
+                ?.dates?.firstNotNullOfOrNull { it.certification?.takeIf(String::isNotBlank) }
+        } else {
+            val ratings = d.contentRatings?.results.orEmpty()
+            (ratings.firstOrNull { it.country == region } ?: ratings.firstOrNull { it.country == "US" })?.rating?.takeIf(String::isNotBlank)
+        }
+        val item = MediaItem(
+            id = d.id,
+            type = type,
+            title = d.title ?: d.name ?: "",
+            posterPath = d.posterPath,
+            backdropPath = d.backdropPath,
+            overview = d.overview.orEmpty(),
+            year = (d.releaseDate ?: d.firstAirDate)?.take(4)?.takeIf { it.isNotBlank() },
+            rating = d.voteAverage,
+            genreIds = d.genres.map { it.id },
+        )
+        val details = Details(
+            item = item,
+            tagline = d.tagline?.takeIf { it.isNotBlank() },
+            genres = d.genres.map { it.name },
+            runtime = d.runtime ?: d.episodeRunTime.firstOrNull(),
+            seasons = d.seasons.filter { it.seasonNumber > 0 && it.episodeCount > 0 }
+                .map { SeasonInfo(it.seasonNumber, it.name ?: "Temporada ${it.seasonNumber}", it.episodeCount) },
+            cast = d.credits?.cast.orEmpty().take(20).map { CastMember(it.id, it.name, it.character, it.profilePath) },
+            recommendations = d.recommendations?.results.orEmpty().mapNotNull { it.toMediaItem(type) }.filter { it.posterPath != null },
+            imdbId = d.imdbId ?: d.externalIds?.imdbId,
+            logoPath = d.images?.bestLogo(),
+            status = d.status,
+            certification = certification,
+        )
+        detailsCache[cacheKey] = details
+        return details
+    }
+
+    suspend fun season(tvId: Int, number: Int): List<Episode> {
+        val cacheKey = "$tvId:$number:${settings.current.language}"
+        seasonCache[cacheKey]?.let { return it }
+        val season = get("tv/$tvId/season/$number", TmdbSeason.serializer())
+        val episodes = season.episodes.map {
+            Episode(
+                season = it.seasonNumber,
+                number = it.episodeNumber,
+                name = it.name?.takeIf(String::isNotBlank) ?: "Episodio ${it.episodeNumber}",
+                overview = it.overview.orEmpty(),
+                stillPath = it.stillPath,
+                runtime = it.runtime,
+                airDate = it.airDate,
+            )
+        }
+        seasonCache[cacheKey] = episodes
+        return episodes
+    }
+
+    private fun TmdbImages.bestLogo(): String? {
+        val lang = settings.current.language.substringBefore('-')
+        val ranked = logos.sortedWith(
+            compareBy<TmdbImage> {
+                when (it.lang) {
+                    lang -> 0
+                    "en" -> 1
+                    null -> 2
+                    else -> 3
+                }
+            }.thenByDescending { it.vote },
+        )
+        return ranked.firstOrNull()?.filePath
+    }
+}
+
+internal fun TmdbItem.toMediaItem(forced: MediaType?): MediaItem? {
+    val type = forced ?: MediaType.fromTmdb(mediaType) ?: return null
+    if (adult) return null
+    return MediaItem(
+        id = id,
+        type = type,
+        title = title ?: name ?: return null,
+        posterPath = posterPath,
+        backdropPath = backdropPath,
+        overview = overview.orEmpty(),
+        year = (releaseDate ?: firstAirDate)?.take(4)?.takeIf { it.isNotBlank() },
+        rating = voteAverage,
+        genreIds = genreIds,
+    )
+}

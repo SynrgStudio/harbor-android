@@ -1,0 +1,62 @@
+package com.synrg.harbor.data
+
+import com.synrg.harbor.BuildConfig
+import com.synrg.harbor.core.JsonStore
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class AddonResource(
+    val name: String,
+    val types: List<String>? = null,
+    val idPrefixes: List<String>? = null,
+)
+
+/** An installed Stremio addon. [transportUrl] is the manifest URL. */
+@Serializable
+data class AddonEntry(
+    val transportUrl: String,
+    val id: String,
+    val name: String,
+    val logo: String? = null,
+    val resources: List<AddonResource> = emptyList(),
+    val types: List<String> = emptyList(),
+    val idPrefixes: List<String>? = null,
+    val enabled: Boolean = true,
+) {
+    val baseUrl: String get() = transportUrl.substringBefore("?").removeSuffix("/manifest.json").removeSuffix("/")
+
+    fun supports(resource: String, type: String, id: String): Boolean {
+        val res = resources.firstOrNull { it.name == resource } ?: return false
+        val resTypes = res.types ?: types
+        if (type !in resTypes) return false
+        val prefixes = res.idPrefixes ?: idPrefixes
+        return prefixes.isNullOrEmpty() || prefixes.any { id.startsWith(it) }
+    }
+}
+
+@Serializable
+data class Settings(
+    val tmdbKey: String = "",
+    val language: String = "es-MX",
+    val region: String = "AR",
+    val stremioAuthKey: String? = null,
+    val stremioEmail: String? = null,
+    val addons: List<AddonEntry> = emptyList(),
+    val addonsSeeded: Boolean = false,
+    /** ISO 639-1 code, or "" for the file's default track. */
+    val audioLanguage: String = "",
+    /** ISO 639-1 code, or "" for no subtitles. */
+    val subtitleLanguage: String = "es",
+    val subtitleScale: Float = 1f,
+    val autoplayNext: Boolean = true,
+) {
+    val effectiveTmdbKey: String get() = tmdbKey.ifBlank { BuildConfig.DEFAULT_TMDB_KEY }
+    val usesBundledKey: Boolean get() = tmdbKey.isBlank() && BuildConfig.DEFAULT_TMDB_KEY.isNotBlank()
+}
+
+class SettingsRepository(private val store: JsonStore<Settings>) {
+    val state: StateFlow<Settings> = store.state
+    val current: Settings get() = store.value
+    fun update(transform: (Settings) -> Settings) = store.update(transform)
+}
