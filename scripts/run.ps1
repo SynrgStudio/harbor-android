@@ -15,8 +15,12 @@ if (-not $NoBuild) {
 $abi = (Invoke-Adb -s $Serial shell getprop ro.product.cpu.abi).Trim()
 $apk = Join-Path $ProjectRoot "app\build\outputs\apk\$variant\app-$abi-$variant.apk"
 if (-not (Test-Path $apk)) { throw "No hay APK para $abi en $apk" }
-Invoke-Adb -s $Serial install -r $apk | Out-Null
-if ($LASTEXITCODE -ne 0) { throw 'Falló la instalación.' }
+$result = (Invoke-Adb -s $Serial install -r $apk) -join ' '
+if ($result -match 'UPDATE_INCOMPATIBLE') {
+    # Debug builds use the debug key, releases the release key: Android will not swap one for the other.
+    throw "La app instalada tiene otra firma (debug vs release). Desinstalala (borra sus datos locales): adb -s $Serial uninstall com.synrg.harbor"
+}
+if ($LASTEXITCODE -ne 0) { throw "Falló la instalación: $result" }
 Invoke-Adb -s $Serial shell am start -n com.synrg.harbor/.MainActivity | Out-Null
 if ($Release) {
     # Sideloaded apps only get their Baseline Profile compiled when the phone is idle and charging;

@@ -49,7 +49,6 @@ class AddonRepository(
     private val settings: SettingsRepository,
 ) {
     companion object {
-        const val TORRENTIO = "https://torrentio.strem.fun/manifest.json"
         const val OPENSUBTITLES = "https://opensubtitles-v3.strem.io/manifest.json"
     }
 
@@ -101,11 +100,14 @@ class AddonRepository(
         )
     }
 
-    /** First launch with no Stremio account: Torrentio + OpenSubtitles, like a fresh Stremio. */
+    /**
+     * First launch: only OpenSubtitles v3, the official addon every new Stremio account has too.
+     * Stream sources are the user's choice: they come with the Stremio account or are added by URL.
+     */
     suspend fun seedDefaultsIfNeeded() {
         if (settings.current.addonsSeeded) return
         val seeded = coroutineScope {
-            listOf(TORRENTIO, OPENSUBTITLES).map { url ->
+            listOf(OPENSUBTITLES).map { url ->
                 async { runCatching { withTimeout(15_000) { fetchManifest(url) } }.getOrNull() }
             }.awaitAll().filterNotNull()
         }

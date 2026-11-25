@@ -1,3 +1,4 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -8,6 +9,13 @@ plugins {
     alias(libs.plugins.baselineprofile)
 }
 
+// Release signing key, outside git: local.properties points to the keystore.
+// Without it (a fresh checkout), release builds fall back to the debug key.
+val localProps = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+val releaseStore: String? = localProps.getProperty("harbor.signing.storeFile")
+
 android {
     namespace = "com.synrg.harbor"
     compileSdk = 36
@@ -16,8 +24,21 @@ android {
         applicationId = "com.synrg.harbor"
         minSdk = 29
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.3.1"
+        versionCode = 5
+        versionName = "0.4.0"
+    }
+
+    signingConfigs {
+        if (releaseStore != null) {
+            create("release") {
+                storeFile = file(releaseStore)
+                storePassword = localProps.getProperty("harbor.signing.storePassword")
+                keyAlias = localProps.getProperty("harbor.signing.keyAlias")
+                keyPassword = localProps.getProperty("harbor.signing.keyPassword")
+                enableV2Signing = true
+                enableV3Signing = true
+            }
+        }
     }
 
     buildTypes {
@@ -28,8 +49,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Personal sideload builds: same key as debug so `adb install -r` keeps app data.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 
