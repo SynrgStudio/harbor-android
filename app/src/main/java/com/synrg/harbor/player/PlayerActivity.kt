@@ -364,8 +364,7 @@ class PlayerActivity : ComponentActivity() {
         val duration = player.duration
         if (duration == C.TIME_UNSET || duration <= 0) return
         val position = if (ended) duration else player.currentPosition
-        graph.progress.save(
-            ProgressEntry(
+        val entry = ProgressEntry(
                 key = request.progressKey,
                 type = request.type,
                 tmdbId = request.tmdbId,
@@ -381,9 +380,12 @@ class PlayerActivity : ComponentActivity() {
                 durationMs = duration,
                 updatedAt = System.currentTimeMillis(),
                 lastStream = request.stream,
-            ),
-        )
-        if (flush) graph.progress.flush()
+            )
+        graph.progress.save(entry)
+        if (flush) {
+            graph.progress.flush()
+            graph.sync.progressChanged(entry) // pauses, exits and endings reach the Stremio account
+        }
     }
 
     fun retry() {
@@ -472,11 +474,11 @@ class PlayerActivity : ComponentActivity() {
         val season = request.season ?: return null
         val episode = request.episode ?: return null
         val imdb = request.imdbId ?: return null
-        val tmdb = graph.tmdb
-        var next = tmdb.season(request.tmdbId, season).firstOrNull { it.number == episode + 1 }
+        val meta = graph.meta
+        var next = meta.season(request.tmdbId, season).firstOrNull { it.number == episode + 1 }
         if (next == null) {
-            val nextSeason = tmdb.details(MediaType.Tv, request.tmdbId).seasons.firstOrNull { it.number > season } ?: return null
-            next = tmdb.season(request.tmdbId, nextSeason.number).firstOrNull() ?: return null
+            val nextSeason = meta.details(MediaType.Tv, request.tmdbId).seasons.firstOrNull { it.number > season } ?: return null
+            next = meta.season(request.tmdbId, nextSeason.number).firstOrNull() ?: return null
         }
         if (!next.released) return null
         val found = mutableListOf<StreamOption>()

@@ -83,6 +83,8 @@ class ProgressRepository(private val store: JsonStore<ProgressData>) {
 
     fun get(key: String): ProgressEntry? = store.value.entries[key]
 
+    val all: Collection<ProgressEntry> get() = store.value.entries.values
+
     fun save(entry: ProgressEntry) = store.update { it.copy(entries = it.entries + (entry.key to entry)) }
 
     fun remove(type: MediaType, id: Int) = store.update { data ->

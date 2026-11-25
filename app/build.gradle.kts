@@ -1,4 +1,3 @@
-import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -9,15 +8,6 @@ plugins {
     alias(libs.plugins.baselineprofile)
 }
 
-// local.properties is gitignored. harbor.tmdbKey seeds the TMDB key so a fresh install works
-// without typing it on the phone. The key ends up inside the APK: personal builds only.
-val localProps = Properties().apply {
-    val f = rootProject.file("local.properties")
-    if (f.exists()) f.inputStream().use { load(it) }
-}
-fun localString(name: String): String =
-    "\"" + (localProps.getProperty(name) ?: "").replace("\\", "\\\\").replace("\"", "\\\"") + "\""
-
 android {
     namespace = "com.synrg.harbor"
     compileSdk = 36
@@ -26,9 +16,8 @@ android {
         applicationId = "com.synrg.harbor"
         minSdk = 29
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.2.0"
-        buildConfigField("String", "DEFAULT_TMDB_KEY", localString("harbor.tmdbKey"))
+        versionCode = 3
+        versionName = "0.3.0"
     }
 
     buildTypes {

@@ -124,7 +124,6 @@ fun HarborRoot() {
                     onOpen = { open(it) },
                     onPlay = { open(it, autoplay = true) },
                     onResume = ::resume,
-                    onOpenSettings = { switchTab(nav, SettingsRoute) },
                 )
             }
             composable<SearchRoute> {

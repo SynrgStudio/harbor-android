@@ -9,7 +9,10 @@ import com.synrg.harbor.data.WatchlistData
 import com.synrg.harbor.data.WatchlistRepository
 import com.synrg.harbor.stremio.AddonRepository
 import com.synrg.harbor.stremio.StremioAccount
-import com.synrg.harbor.tmdb.TmdbRepository
+import com.synrg.harbor.stremio.StremioSync
+import com.synrg.harbor.tmdb.Metadata
+import com.synrg.harbor.tmdb.TmdbAddon
+import com.synrg.harbor.tmdb.TmdbApi
 import com.synrg.harbor.torrent.TorrentEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -54,12 +57,13 @@ class AppGraph(val app: Application) {
     val progress: ProgressRepository by lazy { ProgressRepository(store("progress.json", ProgressData.serializer(), ProgressData())) }
     val watchlist: WatchlistRepository by lazy { WatchlistRepository(store("watchlist.json", WatchlistData.serializer(), WatchlistData())) }
 
-    val tmdb: TmdbRepository by lazy { TmdbRepository(http, json, settings) }
+    val meta: Metadata by lazy { Metadata(settings, TmdbApi(http, json, settings), TmdbAddon(http, json, settings)) }
     val addons: AddonRepository by lazy { AddonRepository(http, json, settings) }
     val stremio: StremioAccount by lazy { StremioAccount(http, json, settings, addons) }
+    val sync: StremioSync by lazy { StremioSync(stremio, settings, progress, watchlist, meta, scope) }
     val torrents: TorrentEngine by lazy { TorrentEngine(app) }
 
-    /** What a list already knew about a title, so its detail page can paint before TMDB answers. */
+    /** What a list already knew about a title, so its detail page can paint before the full data arrives. */
     val previews = java.util.concurrent.ConcurrentHashMap<String, com.synrg.harbor.data.MediaItem>()
 
     private fun <T> store(name: String, serializer: KSerializer<T>, default: T) =

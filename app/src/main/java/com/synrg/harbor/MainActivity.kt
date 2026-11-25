@@ -24,6 +24,12 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
     }
 
+    override fun onStart() {
+        super.onStart()
+        // Picks up what was watched on other devices (throttled, silent when offline).
+        if (graph.settings.current.stremioAuthKey != null) graph.sync.pullInBackground()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleIntent(intent)

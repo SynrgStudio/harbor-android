@@ -71,7 +71,7 @@ fun SettingsScreen(bottomPadding: Dp) {
         Text("Ajustes", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 8.dp))
 
         // Stremio account
-        Section("Cuenta de Stremio", "Trae tus addons (Torrentio, Comet…) igual que Harbor de escritorio.") {
+        Section("Cuenta de Stremio", "Trae tus addons y mantiene “Seguir viendo” y “Mi lista” iguales en Stremio, Harbor de escritorio y acá.") {
             val email = settings.stremioEmail
             if (email != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -82,11 +82,14 @@ fun SettingsScreen(bottomPadding: Dp) {
                 Spacer(Modifier.height(12.dp))
                 var syncing by remember { mutableStateOf(false) }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PrimaryButton(if (syncing) "Sincronizando…" else "Sincronizar addons", HIcons.Refresh, enabled = !syncing, onClick = {
+                    PrimaryButton(if (syncing) "Sincronizando…" else "Sincronizar", HIcons.Refresh, enabled = !syncing, onClick = {
                         syncing = true
                         scope.launch {
-                            runCatching { graph.stremio.syncAddons() }
-                                .onSuccess { toast("$it addons de tu cuenta") }
+                            runCatching {
+                                val addons = graph.stremio.syncAddons()
+                                addons to graph.sync.pull()
+                            }
+                                .onSuccess { (addons, lib) -> toast(syncSummary(addons, lib.continueWatching, lib.added)) }
                                 .onFailure { toast(it.message ?: "No se pudo sincronizar") }
                             syncing = false
                         }
@@ -104,7 +107,10 @@ fun SettingsScreen(bottomPadding: Dp) {
                 PrimaryButton(if (busy) "Conectando…" else "Conectar", null, enabled = !busy && user.isNotBlank() && pass.isNotBlank(), onClick = {
                     busy = true
                     scope.launch {
-                        runCatching { graph.stremio.login(user, pass) }
+                        runCatching {
+                            graph.stremio.login(user, pass)
+                            graph.sync.pull()
+                        }
                             .onSuccess { toast("Cuenta conectada"); pass = "" }
                             .onFailure { toast(it.message ?: "No se pudo iniciar sesión") }
                         busy = false
@@ -171,18 +177,18 @@ fun SettingsScreen(bottomPadding: Dp) {
         }
 
         // Metadata
-        Section("Fichas y portadas (TMDB)", null) {
+        Section("Fichas y portadas", "Vienen de TMDB a través de su addon, sin clave. Con una clave propia de TMDB se suman recomendaciones y calificaciones por edad.") {
             Label("Idioma")
             Choice(listOf("es-MX" to "Español (Latam)", "es-ES" to "Español (España)", "en-US" to "Inglés"), settings.language) { v ->
                 graph.settings.update { it.copy(language = v) }
             }
             Spacer(Modifier.height(14.dp))
             var key by remember { mutableStateOf(settings.tmdbKey) }
-            Field(key, { key = it }, if (settings.usesBundledKey) "Clave propia (opcional: hay una incluida)" else "Clave de API de TMDB", KeyboardType.Ascii, secret = true)
+            Field(key, { key = it }, "Clave de TMDB (opcional)", KeyboardType.Ascii, secret = true)
             Spacer(Modifier.height(8.dp))
             GlassButton("Guardar clave", HIcons.Check, onClick = {
                 graph.settings.update { it.copy(tmdbKey = key.trim()) }
-                toast("Clave guardada")
+                toast(if (key.isBlank()) "Usando TMDB sin clave" else "Clave guardada")
             }, modifier = Modifier.fillMaxWidth())
         }
 
@@ -194,6 +200,12 @@ fun SettingsScreen(bottomPadding: Dp) {
         )
     }
 }
+
+private fun syncSummary(addons: Int, continueWatching: Int, added: Int): String = buildList {
+    add("$addons addons")
+    if (continueWatching > 0) add("$continueWatching en Seguir viendo")
+    if (added > 0) add("$added nuevos en Mi lista")
+}.joinToString(" · ")
 
 @Composable
 private fun Section(title: String, subtitle: String?, content: @Composable ColumnScope.() -> Unit) {

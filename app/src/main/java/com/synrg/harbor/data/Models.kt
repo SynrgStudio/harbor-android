@@ -30,6 +30,8 @@ data class MediaItem(
     val year: String? = null,
     val rating: Double = 0.0,
     val genreIds: List<Int> = emptyList(),
+    /** Genre names, when the source gives names instead of ids. */
+    val genres: List<String> = emptyList(),
 )
 
 @Immutable
@@ -74,11 +76,13 @@ data class Details(
     val certification: String?,
 )
 
+/** Image URLs from TMDB paths at the size each place needs; full URLs (other hosts) pass through. */
 object Img {
     private const val BASE = "https://image.tmdb.org/t/p/"
-    fun poster(path: String?, size: String = "w342") = path?.let { BASE + size + it }
-    fun backdrop(path: String?, size: String = "w1280") = path?.let { BASE + size + it }
-    fun still(path: String?, size: String = "w300") = path?.let { BASE + size + it }
-    fun logo(path: String?, size: String = "w500") = path?.let { BASE + size + it }
-    fun profile(path: String?, size: String = "w185") = path?.let { BASE + size + it }
+    private fun url(path: String?, size: String) = path?.let { if (it.startsWith("http")) it else BASE + size + it }
+    fun poster(path: String?, size: String = "w342") = url(path, size)
+    fun backdrop(path: String?, size: String = "w1280") = url(path, size)
+    fun still(path: String?, size: String = "w300") = url(path, size)
+    fun logo(path: String?, size: String = "w500") = url(path, size)
+    fun profile(path: String?, size: String = "w185") = url(path, size)
 }

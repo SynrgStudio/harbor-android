@@ -26,8 +26,6 @@ import okhttp3.Request
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 
-class MissingTmdbKeyException : IOException("Falta la clave de TMDB")
-
 /**
  * Coroutine context marker: requests made under it are answered only from the HTTP disk cache,
  * even if stale, and fail fast otherwise. Used to paint screens instantly before refreshing.
@@ -39,7 +37,8 @@ object CacheOnly : AbstractCoroutineContextElement(CacheOnly.Key) {
 
 private val STALE_OK = CacheControl.Builder().onlyIfCached().maxStale(30, TimeUnit.DAYS).build()
 
-class TmdbRepository(
+/** TMDB's own API, used when the user saved a personal key in Settings. */
+class TmdbApi(
     private val http: OkHttpClient,
     private val json: Json,
     private val settings: SettingsRepository,
@@ -52,8 +51,7 @@ class TmdbRepository(
 
     private suspend fun <T> get(path: String, strategy: DeserializationStrategy<T>, vararg params: Pair<String, String?>): T {
         val s = settings.current
-        val key = s.effectiveTmdbKey
-        if (key.isBlank()) throw MissingTmdbKeyException()
+        val key = s.tmdbKey
         val bearer = key.startsWith("eyJ")
         val url = "https://api.themoviedb.org/3/$path".toHttpUrl().newBuilder().apply {
             addQueryParameter("language", s.language)

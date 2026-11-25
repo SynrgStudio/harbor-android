@@ -81,7 +81,6 @@ fun HomeScreen(
     onOpen: (MediaItem) -> Unit,
     onPlay: (MediaItem) -> Unit,
     onResume: (ProgressEntry) -> Unit,
-    onOpenSettings: () -> Unit,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val continueWatching by vm.continueWatching.collectAsStateWithLifecycle()
@@ -94,17 +93,7 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize(),
         ) {
             item(key = "hero", contentType = "hero") {
-                if (state.needsKey) {
-                    Column(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 80.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        MessageBlock(
-                            "Falta la clave de TMDB",
-                            "Harbor usa TMDB para portadas y fichas. Cargá tu clave en Ajustes.",
-                            action = { PrimaryButton("Ir a Ajustes", HIcons.Settings, onOpenSettings) },
-                        )
-                    }
-                } else {
-                    Hero(state.hero, onOpen = onOpen, onPlay = onPlay)
-                }
+                Hero(state.hero, onOpen = onOpen, onPlay = onPlay)
             }
             if (continueWatching.isNotEmpty()) {
                 item(key = "continue", contentType = "continue") {
@@ -129,7 +118,7 @@ fun HomeScreen(
             }
             itemsIndexed(state.rows, key = { i, row -> row?.key ?: "placeholder-$i" }, contentType = { _, row -> if (row == null) "placeholder" else "row" }) { _, row ->
                 when {
-                    row == null -> if (state.loading && !state.needsKey) PosterRowPlaceholder()
+                    row == null -> if (state.loading) PosterRowPlaceholder()
                     row.items.isNotEmpty() -> PosterRow(row.title, row.items, onOpen)
                 }
             }

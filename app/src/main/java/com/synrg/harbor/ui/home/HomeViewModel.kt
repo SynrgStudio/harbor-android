@@ -6,10 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.synrg.harbor.core.AppGraph
 import com.synrg.harbor.data.HeroItem
 import com.synrg.harbor.data.MediaItem
-import com.synrg.harbor.data.MediaType
 import com.synrg.harbor.data.ProgressEntry
 import com.synrg.harbor.tmdb.CacheOnly
-import com.synrg.harbor.tmdb.MissingTmdbKeyException
+import com.synrg.harbor.tmdb.HomeRowSpec
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -34,7 +33,6 @@ data class HomeState(
     val rows: List<HomeRow?> = emptyList(),
     val loading: Boolean = true,
     val error: String? = null,
-    val needsKey: Boolean = false,
 )
 
 class HomeViewModel(private val graph: AppGraph) : ViewModel() {
@@ -46,37 +44,12 @@ class HomeViewModel(private val graph: AppGraph) : ViewModel() {
 
     private var loadJob: Job? = null
 
-    private class RowDef(val key: String, val title: String, val load: suspend () -> List<MediaItem>)
-
-    private val rowDefs: List<RowDef>
-        get() {
-            val tmdb = graph.tmdb
-            return listOf(
-                RowDef("trending", "Tendencias de la semana") { tmdb.trending().drop(6) },
-                RowDef("movies", "Películas populares") { tmdb.list(MediaType.Movie, "popular") },
-                RowDef("series", "Series populares") { tmdb.list(MediaType.Tv, "popular") },
-                RowDef("cinema", "Ahora en cines") { tmdb.list(MediaType.Movie, "now_playing") },
-                RowDef("anime", "Anime") {
-                    tmdb.discover(
-                        MediaType.Tv,
-                        "with_genres" to "16",
-                        "with_original_language" to "ja",
-                        "sort_by" to "popularity.desc",
-                        "vote_count.gte" to "50",
-                    )
-                },
-                RowDef("top_movies", "Películas mejor valoradas") { tmdb.list(MediaType.Movie, "top_rated") },
-                RowDef("top_series", "Series aclamadas") { tmdb.list(MediaType.Tv, "top_rated") },
-                RowDef("airing", "Series en emisión") { tmdb.list(MediaType.Tv, "on_the_air") },
-            )
-        }
-
     init {
         load()
         viewModelScope.launch { graph.addons.seedDefaultsIfNeeded() }
-        // Reload when the metadata language or the key changes in Settings.
+        // Reload when the metadata language or the TMDB key (which picks the source) changes in Settings.
         viewModelScope.launch {
-            graph.settings.state.map { it.language to it.effectiveTmdbKey }.distinctUntilChanged().drop(1).collect { load() }
+            graph.settings.state.map { it.language to it.tmdbKey }.distinctUntilChanged().drop(1).collect { load() }
         }
     }
 
@@ -86,7 +59,7 @@ class HomeViewModel(private val graph: AppGraph) : ViewModel() {
      */
     fun load() {
         loadJob?.cancel()
-        val defs = rowDefs
+        val defs = graph.meta.homeRows()
         _state.value = HomeState(rows = List(defs.size) { null })
         loadJob = viewModelScope.launch {
             withContext(CacheOnly) { loadPass(defs, fromCache = true) }
@@ -95,7 +68,7 @@ class HomeViewModel(private val graph: AppGraph) : ViewModel() {
         }
     }
 
-    private suspend fun loadPass(defs: List<RowDef>, fromCache: Boolean) = supervisorScope {
+    private suspend fun loadPass(defs: List<HomeRowSpec>, fromCache: Boolean) = supervisorScope {
         // The hero keeps what it already shows: swapping slides under the user's finger is jarring.
         if (!fromCache || _state.value.hero.isEmpty()) launch { loadHero(fromCache) }
         defs.forEachIndexed { index, def ->
@@ -117,23 +90,20 @@ class HomeViewModel(private val graph: AppGraph) : ViewModel() {
         val shown = _state.value.hero
         if (!fromCache && shown.isNotEmpty() && shown.all { it.logoPath != null }) return
         runCatching {
-            val tmdb = graph.tmdb
-            val trending = tmdb.trending().filter { it.backdropPath != null }.take(6)
-            val genres = runCatching { tmdb.genreNames() }.getOrDefault(emptyMap())
-            val withoutLogos = trending.map { HeroItem(it, null, it.genreIds.mapNotNull(genres::get).take(2)) }
+            val meta = graph.meta
+            val trending = meta.trending().filter { it.backdropPath != null }.take(6)
+            val genres = runCatching { meta.genreNames() }.getOrDefault(emptyMap())
+            val withoutLogos = trending.map { item ->
+                HeroItem(item, null, item.genres.ifEmpty { item.genreIds.mapNotNull(genres::get) }.take(2))
+            }
             val logos = supervisorScope {
-                trending.map { item -> async { runCatching { tmdb.logo(item.type, item.id) }.getOrNull() } }.awaitAll()
+                trending.map { item -> async { runCatching { meta.logo(item.type, item.id) }.getOrNull() } }.awaitAll()
             }
             _state.update { s -> s.copy(hero = withoutLogos.mapIndexed { i, h -> h.copy(logoPath = logos[i]) }) }
         }.onFailure { if (!fromCache) onError(it) }
     }
 
     private fun onError(t: Throwable) {
-        _state.update {
-            when (t) {
-                is MissingTmdbKeyException -> it.copy(needsKey = true, error = null)
-                else -> if (it.error == null) it.copy(error = t.message ?: "Sin conexión") else it
-            }
-        }
+        _state.update { if (it.error == null) it.copy(error = t.message ?: "Sin conexión") else it }
     }
 }

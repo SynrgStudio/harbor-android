@@ -88,9 +88,10 @@ class DetailViewModel(
     fun load() {
         _state.update { it.copy(error = null) }
         viewModelScope.launch {
-            runCatching { graph.tmdb.details(type, id) }
+            runCatching { graph.meta.details(type, id) }
                 .onSuccess { details ->
                     _state.update { it.copy(details = details, partial = false) }
+                    if (details.recommendations.isEmpty()) loadRecommendations(details)
                     if (type == MediaType.Tv) {
                         val latest = progress.value.values.maxByOrNull { it.updatedAt }
                         val season = latest?.season?.takeIf { s -> details.seasons.any { it.number == s } }
@@ -106,18 +107,28 @@ class DetailViewModel(
         }
     }
 
+    /** Filled after the page is up: it is the last row, no reason to hold the rest for it. */
+    private fun loadRecommendations(details: Details) = viewModelScope.launch {
+        val recs = runCatching { graph.meta.recommendations(details) }.getOrNull().orEmpty()
+        if (recs.isNotEmpty()) {
+            _state.update { s -> s.copy(details = s.details?.copy(recommendations = recs)) }
+        }
+    }
+
     fun selectSeason(number: Int) {
         if (_state.value.season == number && _state.value.episodes != null) return
         seasonJob?.cancel()
         _state.update { it.copy(season = number, episodes = null, episodesLoading = true) }
         seasonJob = viewModelScope.launch {
-            val episodes = runCatching { graph.tmdb.season(id, number) }.getOrNull()
+            val episodes = runCatching { graph.meta.season(id, number) }.getOrNull()
             _state.update { it.copy(episodes = episodes ?: emptyList(), episodesLoading = false) }
         }
     }
 
     fun toggleWatchlist() {
-        _state.value.details?.let { graph.watchlist.toggle(it.item) }
+        val details = _state.value.details ?: return
+        val added = graph.watchlist.toggle(details.item, details.imdbId)
+        graph.sync.watchlistChanged(details.item, details.imdbId, added)
     }
 
     /** The big button: the movie, or the episode you are on / the next one. */
@@ -137,7 +148,7 @@ class DetailViewModel(
                 if (!latest.finished) {
                     episodeTarget(latest.season, latest.episode)
                 } else {
-                    val eps = runCatching { graph.tmdb.season(id, latest.season) }.getOrDefault(emptyList())
+                    val eps = runCatching { graph.meta.season(id, latest.season) }.getOrDefault(emptyList())
                     val next = eps.firstOrNull { it.number == latest.episode + 1 }
                     when {
                         next != null -> StreamTarget(next.season, next.number, next.name, next.stillPath)
@@ -153,7 +164,7 @@ class DetailViewModel(
     }
 
     private suspend fun episodeTarget(season: Int, episode: Int): StreamTarget {
-        val ep = runCatching { graph.tmdb.season(id, season) }.getOrNull()?.firstOrNull { it.number == episode }
+        val ep = runCatching { graph.meta.season(id, season) }.getOrNull()?.firstOrNull { it.number == episode }
         return StreamTarget(season, episode, ep?.name, ep?.stillPath)
     }
 
@@ -177,7 +188,7 @@ class DetailViewModel(
         val resume = progress.value[key]
         val imdb = details.imdbId
         if (imdb == null) {
-            _streams.value = StreamsUi(target, emptyList(), resume, error = "TMDB no tiene el ID de IMDb de este título, así que los addons no pueden buscarlo.")
+            _streams.value = StreamsUi(target, emptyList(), resume, error = "Este título no tiene ID de IMDb, así que los addons no pueden buscarlo.")
             return
         }
         _streams.value = StreamsUi(target, emptyList(), resume)

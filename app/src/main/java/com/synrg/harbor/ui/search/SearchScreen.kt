@@ -73,11 +73,11 @@ class SearchViewModel(private val graph: AppGraph) : ViewModel() {
             flow {
                 if (q.length < 2) {
                     emit(SearchState(q, loading = true))
-                    val trending = runCatching { graph.tmdb.trending() }.getOrDefault(emptyList())
+                    val trending = runCatching { graph.meta.trending() }.getOrDefault(emptyList())
                     emit(SearchState(q, results = trending.filter { it.posterPath != null }, suggestions = true))
                 } else {
                     emit(SearchState(q, loading = true, suggestions = false))
-                    val found = runCatching { graph.tmdb.search(q) }.getOrDefault(emptyList())
+                    val found = runCatching { graph.meta.search(q) }.getOrDefault(emptyList())
                     emit(SearchState(q, results = found.filter { it.posterPath != null }, suggestions = false))
                 }
             }

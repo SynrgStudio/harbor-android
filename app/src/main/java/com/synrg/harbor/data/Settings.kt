@@ -1,6 +1,5 @@
 package com.synrg.harbor.data
 
-import com.synrg.harbor.BuildConfig
 import com.synrg.harbor.core.JsonStore
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.Serializable
@@ -37,6 +36,7 @@ data class AddonEntry(
 
 @Serializable
 data class Settings(
+    /** Optional personal TMDB key; without one, metadata comes from the keyless TMDB addon. */
     val tmdbKey: String = "",
     val language: String = "es-MX",
     val region: String = "AR",
@@ -50,10 +50,7 @@ data class Settings(
     val subtitleLanguage: String = "es",
     val subtitleScale: Float = 1f,
     val autoplayNext: Boolean = true,
-) {
-    val effectiveTmdbKey: String get() = tmdbKey.ifBlank { BuildConfig.DEFAULT_TMDB_KEY }
-    val usesBundledKey: Boolean get() = tmdbKey.isBlank() && BuildConfig.DEFAULT_TMDB_KEY.isNotBlank()
-}
+) {}
 
 class SettingsRepository(private val store: JsonStore<Settings>) {
     val state: StateFlow<Settings> = store.state
