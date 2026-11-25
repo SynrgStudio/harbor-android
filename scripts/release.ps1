@@ -16,7 +16,7 @@ if (-not (Select-String -Path local.properties -Pattern '^harbor\.signing\.store
 $ErrorActionPreference = 'Continue'
 if (git status --porcelain) { throw 'Hay cambios sin commitear: commiteá antes de publicar.' }
 gh release view $tag *> $null
-if ($LASTEXITCODE -eq 0) { throw "Ya existe el release $tag: subí versionName primero." }
+if ($LASTEXITCODE -eq 0) { throw "Ya existe el release ${tag}: subí versionName primero." }
 
 & .\gradlew.bat :app:assembleRelease --console=plain -q
 if ($LASTEXITCODE -ne 0) { throw 'Falló el build.' }
