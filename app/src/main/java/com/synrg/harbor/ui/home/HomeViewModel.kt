@@ -44,6 +44,14 @@ class HomeViewModel(private val graph: AppGraph) : ViewModel() {
 
     private var loadJob: Job? = null
 
+    /** Until an account is linked (or the offer is dismissed), home offers it: one login brings everything. */
+    val offerStremio: StateFlow<Boolean> = graph.settings.state
+        .map { it.stremioAuthKey == null && !it.stremioPromptDismissed }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    fun dismissStremioOffer() = graph.settings.update { it.copy(stremioPromptDismissed = true) }
+
     init {
         load()
         viewModelScope.launch { graph.addons.seedDefaultsIfNeeded() }

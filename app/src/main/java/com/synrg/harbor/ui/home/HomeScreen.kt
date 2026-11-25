@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -75,15 +76,38 @@ import kotlinx.coroutines.delay
 import kotlin.math.absoluteValue
 
 @Composable
+private fun ConnectStremioCard(onConnect: () -> Unit, onDismiss: () -> Unit) {
+    val shape = RoundedCornerShape(18.dp)
+    Column(
+        Modifier.padding(start = 16.dp, end = 16.dp, top = 18.dp).fillMaxWidth().clip(shape)
+            .background(HarborColors.Surface).border(1.dp, HarborColors.Outline, shape).padding(16.dp),
+    ) {
+        Text("Conectá tu cuenta de Stremio", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "Trae tus addons, lo que estás viendo y tu lista, igual que en Stremio y en Harbor de la PC.",
+            style = MaterialTheme.typography.bodySmall,
+            color = HarborColors.TextDim,
+            modifier = Modifier.padding(top = 4.dp, bottom = 14.dp),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PrimaryButton("Conectar", null, onClick = onConnect, modifier = Modifier.weight(1f))
+            GlassButton("Ahora no", null, onClick = onDismiss)
+        }
+    }
+}
+
+@Composable
 fun HomeScreen(
     vm: HomeViewModel,
     bottomPadding: Dp,
     onOpen: (MediaItem) -> Unit,
     onPlay: (MediaItem) -> Unit,
     onResume: (ProgressEntry) -> Unit,
+    onConnectStremio: () -> Unit,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val continueWatching by vm.continueWatching.collectAsStateWithLifecycle()
+    val offerStremio by vm.offerStremio.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
     Box(Modifier.fillMaxSize().background(HarborColors.Bg)) {
@@ -94,6 +118,11 @@ fun HomeScreen(
         ) {
             item(key = "hero", contentType = "hero") {
                 Hero(state.hero, onOpen = onOpen, onPlay = onPlay)
+            }
+            if (offerStremio) {
+                item(key = "stremio", contentType = "stremio") {
+                    ConnectStremioCard(onConnect = onConnectStremio, onDismiss = vm::dismissStremioOffer)
+                }
             }
             if (continueWatching.isNotEmpty()) {
                 item(key = "continue", contentType = "continue") {

@@ -44,6 +44,8 @@ data class Settings(
     val stremioEmail: String? = null,
     val addons: List<AddonEntry> = emptyList(),
     val addonsSeeded: Boolean = false,
+    /** "Ahora no" on the home card that offers to link the Stremio account. */
+    val stremioPromptDismissed: Boolean = false,
     /** ISO 639-1 code, or "" for the file's default track. */
     val audioLanguage: String = "",
     /** ISO 639-1 code, or "" for no subtitles. */
