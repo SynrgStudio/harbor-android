@@ -1,0 +1,11 @@
+date,version,phone,android,measure,value,unit,method
+2026-11-25,0.1.0,Samsung Galaxy A54,16,cold_start,346,ms,"am force-stop; am start -W TotalTime"
+2026-11-25,0.1.0,Samsung Galaxy A54,16,janky_frames,2.63,%,"dumpsys gfxinfo after scripts/jank.sh"
+2026-11-25,0.1.0,Samsung Galaxy A54,16,frame_p90,13,ms,"dumpsys gfxinfo after scripts/jank.sh"
+2026-11-25,0.1.0,Samsung Galaxy A54,16,frame_p99,21,ms,"dumpsys gfxinfo after scripts/jank.sh"
+2026-11-25,0.2.0,Samsung Galaxy A54,16,cold_start_min,275,ms,"am force-stop; am start -W TotalTime; 3 runs"
+2026-11-25,0.2.0,Samsung Galaxy A54,16,cold_start_max,340,ms,"am force-stop; am start -W TotalTime; 3 runs"
+2026-11-25,0.2.0,Samsung Galaxy A54,16,janky_frames,1.31,%,"dumpsys gfxinfo after scripts/jank.sh"
+2026-11-25,0.2.0,Samsung Galaxy A54,16,frame_p90,10,ms,"dumpsys gfxinfo after scripts/jank.sh"
+2026-11-25,0.2.0,Samsung Galaxy A54,16,frame_p99_min,11,ms,"dumpsys gfxinfo after scripts/jank.sh; best run"
+2026-11-25,0.2.0,Samsung Galaxy A54,16,frame_p99_max,16,ms,"dumpsys gfxinfo after scripts/jank.sh; worst run"

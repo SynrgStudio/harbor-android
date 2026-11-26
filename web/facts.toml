@@ -1,0 +1,384 @@
+# Harbor for Android's corpus: what is true about it and can be published. The format is synrgs-web's CORPUS.md.
+# Numbers come from the released source, the published release, or real runs on a phone; each says which.
+# How the phone numbers were taken is in notes/performance.md.
+
+[project]
+name = "Harbor for Android"
+short_name = "Harbor"
+version = "0.7.0"
+released = 2026-11-26
+license = "GPL-3.0-or-later"
+platforms = ["Android 10 or later"]
+abis = ["arm64-v8a (phones)", "x86_64 (emulators and Chromebooks)"]
+language = "Kotlin + Jetpack Compose; the torrent engine is Rust (librqbit) behind a thin JNI layer"
+repo = "https://github.com/SynrgStudio/harbor-android"
+download = "https://github.com/SynrgStudio/harbor-android/releases/latest"
+releases = "https://github.com/SynrgStudio/harbor-android/releases"
+site = "https://harbor.synrgs.tech"
+inspired_by = "https://github.com/HarborCommunity/Harbor"
+status = "in active development; signed APKs on GitHub Releases, not on any app store"
+signing_cert_sha256 = "E2:FA:56:B9:3D:A9:A7:ED:2D:09:D3:23:58:A6:18:16:2F:97:55:99:18:E3:C6:F5:24:00:72:B4:AF:54:B0:B8"
+
+# The phone the performance numbers below were measured on.
+[phone]
+model = "Samsung Galaxy A54"
+os = "Android 16"
+display = "120 Hz"
+
+# The app's own look, for pages that want to match it.
+[brand]
+accent = "#7DD3FC"
+accent_deep = "#38BDF8"
+background = "#07080B"
+surface = "#111318"
+text = "#F4F6FA"
+text_dim = "#A6AEBB"
+font = "Inter"
+icon = "icon.svg"
+
+# ---------------------------------------------------------------- the release
+
+[facts.apk_mb]
+value = 19.1
+unit = "MB"
+what = "size of the arm64-v8a APK of 0.7.0 as published (19,053,753 bytes), in decimal MB; it includes the torrent engine and the FFmpeg audio decoder"
+source = "GitHub release v0.7.0, asset Harbor-0.7.0-arm64-v8a.apk (SHA-256 ba262135c014b4f08737dc4f15dcea4e649ebe84d891761d1b2d264bab29d85d)"
+date = 2026-11-26
+
+[facts.apk_x86_64_mb]
+value = 20.8
+unit = "MB"
+what = "size of the x86_64 APK of 0.7.0 as published (20,849,048 bytes), in decimal MB"
+source = "GitHub release v0.7.0, asset Harbor-0.7.0-x86_64.apk (SHA-256 8841083b9c1d2f2bbc44cec321e1fcd2c322c793e64cb22106526436d9f6952f)"
+date = 2026-11-26
+
+[facts.min_android]
+value = 10
+unit = "Android version"
+what = "oldest Android it installs on (minSdk 29)"
+source = "app/build.gradle.kts at v0.7.0"
+date = 2026-11-26
+
+[facts.languages]
+value = 2
+unit = "languages"
+what = "languages the interface ships in: English and Spanish"
+source = "app/build.gradle.kts (localeFilters) and res/xml/locales_config.xml at v0.7.0"
+date = 2026-11-26
+
+[facts.ui_strings]
+value = 326
+unit = "strings"
+what = "interface texts translated into each language (plus the app name, which is the same in both)"
+source = "res/values/strings_*.xml and res/values-es/strings_*.xml at v0.7.0, counted"
+date = 2026-11-26
+
+[facts.kotlin_lines]
+value = 8618
+unit = "lines"
+what = "lines of Kotlin in the app, without blank lines or comments"
+source = "app/src/main/java at v0.7.0, counted"
+date = 2026-11-26
+
+[facts.kotlin_files]
+value = 50
+unit = "files"
+what = "Kotlin source files in the app"
+source = "app/src/main/java at v0.7.0, counted"
+date = 2026-11-26
+
+[facts.rust_glue_lines]
+value = 100
+unit = "lines"
+what = "lines of Rust between Kotlin and librqbit (start the engine, report errors), without blank lines or comments; everything else goes through librqbit's own HTTP API"
+source = "native/src at v0.7.0, counted"
+date = 2026-11-26
+
+[facts.bundled_stream_addons]
+value = 0
+unit = "addons"
+what = "stream addons that come with the app; the only addon it adds by itself is OpenSubtitles v3, for subtitles"
+source = "stremio/AddonRepository.kt (seedDefaultsIfNeeded) at v0.7.0"
+date = 2026-11-26
+
+[facts.api_keys_in_apk]
+value = 0
+unit = "keys"
+what = "API keys shipped inside the APK; TMDB works through its keyless addon, and a personal key is optional"
+source = "tmdb/TmdbAddon.kt and data/Settings.kt at v0.7.0"
+date = 2026-11-26
+
+# ---------------------------------------------------------------- behavior (from the source, not measured)
+
+[facts.metered_upload_kib_s]
+value = 16
+unit = "KiB/s"
+what = "torrent upload limit while on mobile data or another metered network; on Wi-Fi there is no limit"
+source = "torrent/TorrentEngine.kt (watchNetwork) at v0.7.0"
+date = 2026-11-26
+
+[facts.next_episode_prefetch_min]
+value = 3
+unit = "minutes"
+what = "how long before the end of an episode the player looks up the next one's stream and starts loading it"
+source = "player/PlayerActivity.kt (PREFETCH_BEFORE_END_MS = 180,000) at v0.7.0"
+date = 2026-11-26
+
+[facts.autoplay_countdown_s]
+value = 5
+unit = "s"
+what = "countdown on the next-episode card at the end of an episode before it plays by itself"
+source = "player/PlayerScreen.kt at v0.7.0"
+date = 2026-11-26
+
+[facts.skip_s]
+value = 10
+unit = "s"
+what = "how far a double tap, or the skip buttons, jumps back or forward"
+source = "player/PlayerScreen.kt at v0.7.0"
+date = 2026-11-26
+
+[facts.swipe_seek_min]
+value = 2
+unit = "minutes"
+what = "how far a full-width horizontal swipe seeks (a fifth of the video if it is short)"
+source = "player/PlayerScreen.kt at v0.7.0"
+date = 2026-11-26
+
+[facts.episode_check_hours]
+value = 6
+unit = "hours"
+what = "how often the background job checks the followed series for new episodes"
+source = "episodes/EpisodeAlerts.kt (PERIOD_MS) at v0.7.0"
+date = 2026-11-26
+
+[facts.coming_soon_days]
+value = 45
+unit = "days"
+what = "how far ahead \"Coming soon\" lists episodes"
+source = "episodes/EpisodeCalendar.kt (UPCOMING_MS) at v0.7.0"
+date = 2026-11-26
+
+[facts.new_episodes_days]
+value = 7
+unit = "days"
+what = "how recent an episode must be to show under \"New episodes\""
+source = "episodes/EpisodeCalendar.kt (RECENT_MS) at v0.7.0"
+date = 2026-11-26
+
+[facts.follow_watched_days]
+value = 120
+unit = "days"
+what = "a series counts as followed if it is in My list or was watched in this many days"
+source = "episodes/EpisodeCalendar.kt (FOLLOW_WATCHED_MS) at v0.7.0"
+date = 2026-11-26
+
+[facts.torrent_cache_gb]
+value = 12
+unit = "GiB"
+what = "ceiling of the torrent cache; folders untouched for 2 days go first, then the oldest above this size"
+source = "torrent/TorrentEngine.kt (pruneCache) at v0.7.0"
+date = 2026-11-26
+
+[facts.launcher_shortcuts]
+value = 4
+unit = "shortcuts"
+what = "titles from Continue watching offered when you long-press the app icon"
+source = "core/Shortcuts.kt (MAX) at v0.7.0"
+date = 2026-11-26
+
+[facts.finished_pct]
+value = 92
+unit = "%"
+what = "how far into a video it counts as watched"
+source = "data/Progress.kt (FINISHED = 0.92) at v0.7.0"
+date = 2026-11-26
+
+# ---------------------------------------------------------------- measured on the phone
+# Release builds on the [phone] above, installed over wireless debugging. Startup: `am force-stop`, then
+# `am start -W`, TotalTime (launch to first frame), 3 runs. Frames: `dumpsys gfxinfo` over the scripted
+# Home scroll in scripts/jank.sh (4 swipes down, 3 sideways through a row, 4 up). These are from 0.1.0
+# and 0.2.0, the first two builds; later versions were not measured again.
+
+[facts.startup_ms_min]
+value = 275
+unit = "ms"
+what = "cold start to first frame on the phone, fastest of 3 runs, version 0.2.0"
+source = "am start -W (TotalTime) on the Galaxy A54, release build 0.2.0"
+date = 2026-11-25
+
+[facts.startup_ms_max]
+value = 340
+unit = "ms"
+what = "cold start to first frame on the phone, slowest of 3 runs, version 0.2.0"
+source = "am start -W (TotalTime) on the Galaxy A54, release build 0.2.0"
+date = 2026-11-25
+
+[facts.startup_ms_before]
+value = 346
+unit = "ms"
+what = "cold start to first frame on the phone with 0.1.0, before the Baseline Profile"
+source = "am start -W (TotalTime) on the Galaxy A54, release build 0.1.0"
+date = 2026-11-25
+
+[facts.janky_pct]
+value = 1.31
+unit = "%"
+what = "share of frames Android marks as janky during the scripted Home scroll, version 0.2.0"
+source = "dumpsys gfxinfo after scripts/jank.sh on the Galaxy A54, release build 0.2.0"
+date = 2026-11-25
+
+[facts.janky_pct_before]
+value = 2.63
+unit = "%"
+what = "the same with 0.1.0"
+source = "dumpsys gfxinfo after scripts/jank.sh on the Galaxy A54, release build 0.1.0"
+date = 2026-11-25
+
+[facts.frame_p90_ms]
+value = 10
+unit = "ms"
+what = "90th percentile frame time during the scripted Home scroll, version 0.2.0"
+source = "dumpsys gfxinfo after scripts/jank.sh on the Galaxy A54, release build 0.2.0"
+date = 2026-11-25
+
+[facts.frame_p90_ms_before]
+value = 13
+unit = "ms"
+what = "the same with 0.1.0"
+source = "dumpsys gfxinfo after scripts/jank.sh on the Galaxy A54, release build 0.1.0"
+date = 2026-11-25
+
+[facts.frame_p99_ms_min]
+value = 11
+unit = "ms"
+what = "99th percentile frame time during the scripted Home scroll, version 0.2.0, best of the runs"
+source = "dumpsys gfxinfo after scripts/jank.sh on the Galaxy A54, release build 0.2.0"
+date = 2026-11-25
+
+[facts.frame_p99_ms_max]
+value = 16
+unit = "ms"
+what = "99th percentile frame time during the scripted Home scroll, version 0.2.0, worst of the runs"
+source = "dumpsys gfxinfo after scripts/jank.sh on the Galaxy A54, release build 0.2.0"
+date = 2026-11-25
+
+[facts.frame_p99_ms_before]
+value = 21
+unit = "ms"
+what = "99th percentile frame time with 0.1.0"
+source = "dumpsys gfxinfo after scripts/jank.sh on the Galaxy A54, release build 0.1.0"
+date = 2026-11-25
+
+[facts.frame_budget_ms]
+value = 8.3
+unit = "ms"
+what = "time per frame at the phone's 120 Hz (1000 / 120), the budget the numbers above are measured against"
+source = "derived from the [phone] display rate"
+date = 2026-11-25
+
+# ---------------------------------------------------------------- pictures
+# Screenshots of 0.7.0 on the project's Android 15 emulator (1080 x 2400, 420 dpi), 2026-11-26, status bar in demo
+# mode. No Stremio account is signed in. The player and stream pictures use Tears of Steel, the Blender
+# Foundation's open movie (CC BY 3.0, (c) Blender Foundation | mango.blender.org), served by a small local addon
+# named "Open Movies" made only for these pictures; it is not part of Harbor. Posters and artwork come from TMDB.
+
+[media.icon]
+file = "icon.svg"
+what = "the app icon (anchor on a navy gradient), full-bleed square; Android masks it to the launcher's shape"
+
+[media.home]
+file = "home.jpg"
+what = "Home: featured carousel with the title's logo, and the Stremio sign-in card for a new install"
+
+[media.home_rows]
+file = "home-rows.jpg"
+what = "Home rows: new releases, anime, new series, sci-fi, under the floating translucent tab bar"
+
+[media.title_series]
+file = "title-series.jpg"
+what = "a series' page: artwork, logo, rating, seasons, Watch now and Add to my list"
+
+[media.title_episodes]
+file = "title-episodes.jpg"
+what = "the episode list, with the first episode marked as watched"
+
+[media.title_cast]
+file = "title-cast.jpg"
+what = "the end of a title page: cast with their characters, and similar titles"
+
+[media.search]
+file = "search.jpg"
+what = "Search results"
+
+[media.streams]
+file = "streams.jpg"
+what = "the stream sheet: quality filters, \"Continue with the same stream\" from minute 3, and a download button per stream"
+
+[media.player]
+file = "player.jpg"
+what = "the player with its controls and English subtitles (landscape)"
+
+[media.player_subtitles]
+file = "player-subtitles.jpg"
+what = "the player without controls, showing a subtitle"
+
+[media.player_tracks]
+file = "player-tracks.jpg"
+what = "the side panel for audio, subtitles and speed; online subtitles numbered per language"
+
+[media.player_brightness]
+file = "player-brightness.jpg"
+what = "the brightness gesture (vertical swipe on the left half) with its level"
+
+[media.player_seek]
+file = "player-seek.jpg"
+what = "the seek gesture (horizontal swipe) with the target time and the jump"
+
+[media.player_sleep_timer]
+file = "player-sleep-timer.jpg"
+what = "the sleep timer panel"
+
+[media.player_lock]
+file = "player-lock.jpg"
+what = "the screen lock: touches are ignored until you tap the pill"
+
+[media.pip]
+file = "pip.jpg"
+what = "picture-in-picture over a title page, subtitles included"
+
+[media.continue]
+file = "continue.jpg"
+what = "the Continue tab: a movie halfway through, and New episodes of a followed series"
+
+[media.continue_coming_soon]
+file = "continue-coming-soon.jpg"
+what = "the Continue tab further down: Coming soon, with release days"
+
+[media.my_list]
+file = "my-list.jpg"
+what = "My list, with the Downloads button"
+
+[media.downloads]
+file = "downloads.jpg"
+what = "Downloads: a movie saved for offline, with the space used and free"
+
+[media.settings_account_addons]
+file = "settings-account-addons.jpg"
+what = "Settings: Stremio sign-in and the stream addons (OpenSubtitles v3 and the demo addon)"
+
+[media.settings_playback]
+file = "settings-playback.jpg"
+what = "Settings: preferred audio and subtitles, subtitle size, autoplay, mobile data and downloads"
+
+[media.settings_metadata_updates]
+file = "settings-metadata-updates.jpg"
+what = "Settings: notifications, metadata language, optional TMDB key and updates"
+
+[media.spanish_continue]
+file = "spanish-continue.jpg"
+what = "the Continue tab with the interface in Spanish"
+
+[media.spanish_home]
+file = "spanish-home.jpg"
+what = "Home with the interface in Spanish"

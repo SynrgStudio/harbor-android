@@ -18,6 +18,8 @@ Native Android app (Kotlin + Jetpack Compose): TMDB metadata, streams from Strem
 - Run the new-episode check by hand: `adb shell cmd jobscheduler run -f com.synrg.harbor 4201`. `am force-stop` wipes scheduled jobs (use `am kill` with the app in the background); `lastCheck` is in `files/episodes.json` (`run-as`).
 - Check both languages: `adb shell cmd locale set-app-locales com.synrg.harbor --locales es` (or `en`; `--locales` empty goes back to the system language).
 - Emulator screenshot from bash: `adb -s emulator-5590 exec-out screencap -p > shot.png` (in PowerShell 5.1 the redirect corrupts the PNG).
+- Screenshots for the project page: `pm clear` the app for a clean English install, gesture navigation (`cmd overlay enable-exclusive --category com.android.internal.systemui.navbar.gestural`) and the status bar in demo mode (`settings put global sysui_demo_allowed 1`, then `am broadcast -a com.android.systemui.demo -e command clock -e hhmm 0941`, and the same for battery and network). For the player and streams, run `python scripts/demo-addon.py` and add `http://10.0.2.2:7311/manifest.json` in Settings: it serves the Blender open movies. Never use real stream addons or a real account in pictures.
+- `web/` is the project page's corpus (facts, notes, screenshots and rules for harbor.synrgs.tech). When a release changes something the page says, update `web/` and add an entry to `web/CHANGELOG.md`; `web/rules.md` lists what the page must never say.
 
 ## Rules and gotchas
 
