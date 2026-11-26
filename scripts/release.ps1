@@ -38,7 +38,7 @@ $files = foreach ($abi in 'arm64-v8a', 'x86_64') {
 }
 
 $body = if ($NotesFile) { Get-Content $NotesFile -Raw -Encoding UTF8 } elseif ($Notes) { $Notes } else { "Harbor $version" }
-$body += "`n`n---`n**arm64-v8a**: celulares. **x86_64**: emuladores y Chromebooks.`n`nCertificado de firma (SHA-256): ``$sha``"
+$body += "`n`n---`n**arm64-v8a**: phones. **x86_64**: emulators and Chromebooks.`n`nSigning certificate (SHA-256): ``$sha``"
 $notesPath = Join-Path $env:TEMP "harbor-release-$version.md"
 [IO.File]::WriteAllText($notesPath, $body, (New-Object Text.UTF8Encoding $false))
 
