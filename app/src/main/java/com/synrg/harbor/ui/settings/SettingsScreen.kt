@@ -54,6 +54,8 @@ import com.synrg.harbor.ui.components.GlassButton
 import com.synrg.harbor.ui.components.PrimaryButton
 import com.synrg.harbor.ui.theme.HIcons
 import com.synrg.harbor.ui.theme.HarborColors
+import com.synrg.harbor.update.UpdateCard
+import com.synrg.harbor.update.UpdateState
 import kotlinx.coroutines.launch
 
 @Composable
@@ -190,6 +192,30 @@ fun SettingsScreen(bottomPadding: Dp) {
                 graph.settings.update { it.copy(tmdbKey = key.trim()) }
                 toast(if (key.isBlank()) "Usando TMDB sin clave" else "Clave guardada")
             }, modifier = Modifier.fillMaxWidth())
+        }
+
+        if (BuildConfig.SELF_UPDATE) {
+            Section("Actualizaciones", "Tenés la versión ${BuildConfig.VERSION_NAME}. Las nuevas salen en GitHub y se instalan encima, sin perder nada.") {
+                val update by graph.updater.state.collectAsStateWithLifecycle()
+                ToggleRow("Avisar cuando haya una versión nueva", settings.checkUpdates) { on -> graph.settings.update { it.copy(checkUpdates = on) } }
+                Spacer(Modifier.height(12.dp))
+                if (update is UpdateState.Idle) {
+                    var checking by remember { mutableStateOf(false) }
+                    GlassButton(if (checking) "Buscando…" else "Buscar ahora", HIcons.Refresh, onClick = {
+                        if (!checking) {
+                            checking = true
+                            scope.launch {
+                                runCatching { graph.updater.check() }
+                                    .onSuccess { if (it == null) toast("Ya tenés la última versión") }
+                                    .onFailure { toast(it.message ?: "No se pudo consultar GitHub") }
+                                checking = false
+                            }
+                        }
+                    }, modifier = Modifier.fillMaxWidth())
+                } else {
+                    UpdateCard(update)
+                }
+            }
         }
 
         Text(

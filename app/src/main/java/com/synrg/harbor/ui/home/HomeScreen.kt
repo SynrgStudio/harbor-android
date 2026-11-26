@@ -72,6 +72,8 @@ import com.synrg.harbor.ui.components.PrimaryButton
 import com.synrg.harbor.ui.components.SectionTitle
 import com.synrg.harbor.ui.theme.HIcons
 import com.synrg.harbor.ui.theme.HarborColors
+import com.synrg.harbor.update.UpdateCard
+import com.synrg.harbor.update.UpdateState
 import kotlinx.coroutines.delay
 import kotlin.math.absoluteValue
 
@@ -108,6 +110,7 @@ fun HomeScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val continueWatching by vm.continueWatching.collectAsStateWithLifecycle()
     val offerStremio by vm.offerStremio.collectAsStateWithLifecycle()
+    val update by vm.update.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
     Box(Modifier.fillMaxSize().background(HarborColors.Bg)) {
@@ -118,6 +121,11 @@ fun HomeScreen(
         ) {
             item(key = "hero", contentType = "hero") {
                 Hero(state.hero, onOpen = onOpen, onPlay = onPlay)
+            }
+            if (update !is UpdateState.Idle) {
+                item(key = "update", contentType = "update") {
+                    UpdateCard(update, Modifier.padding(start = 16.dp, end = 16.dp, top = 18.dp))
+                }
             }
             if (offerStremio) {
                 item(key = "stremio", contentType = "stremio") {

@@ -24,8 +24,11 @@ android {
         applicationId = "com.synrg.harbor"
         minSdk = 29
         targetSdk = 36
-        versionCode = 6
-        versionName = "0.4.1"
+        // -Pharbor.versionCode/-Pharbor.versionName build an "older" copy to test the in-app updater.
+        versionCode = providers.gradleProperty("harbor.versionCode").orNull?.toInt() ?: 7
+        versionName = providers.gradleProperty("harbor.versionName").orNull ?: "0.5.0"
+        // In-app updates from GitHub Releases; a store build (F-Droid) would turn this off.
+        buildConfigField("boolean", "SELF_UPDATE", "true")
     }
 
     signingConfigs {

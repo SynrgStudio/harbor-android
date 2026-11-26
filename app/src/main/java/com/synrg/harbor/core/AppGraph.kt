@@ -14,6 +14,7 @@ import com.synrg.harbor.tmdb.Metadata
 import com.synrg.harbor.tmdb.TmdbAddon
 import com.synrg.harbor.tmdb.TmdbApi
 import com.synrg.harbor.torrent.TorrentEngine
+import com.synrg.harbor.update.Updater
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -62,6 +63,7 @@ class AppGraph(val app: Application) {
     val stremio: StremioAccount by lazy { StremioAccount(http, json, settings, addons) }
     val sync: StremioSync by lazy { StremioSync(stremio, settings, progress, watchlist, meta, scope) }
     val torrents: TorrentEngine by lazy { TorrentEngine(app) }
+    val updater: Updater by lazy { Updater(app, http, json, settings, scope) }
 
     /** What a list already knew about a title, so its detail page can paint before the full data arrives. */
     val previews = java.util.concurrent.ConcurrentHashMap<String, com.synrg.harbor.data.MediaItem>()

@@ -28,6 +28,13 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         // Picks up what was watched on other devices (throttled, silent when offline).
         if (graph.settings.current.stremioAuthKey != null) graph.sync.pullInBackground()
+        graph.updater.checkInBackground()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Back from Android's "install unknown apps" screen: carry on with a pending update.
+        graph.updater.resume()
     }
 
     override fun onNewIntent(intent: Intent) {

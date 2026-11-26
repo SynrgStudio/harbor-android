@@ -15,6 +15,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import com.synrg.harbor.update.UpdateState
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
@@ -51,6 +53,11 @@ class HomeViewModel(private val graph: AppGraph) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     fun dismissStremioOffer() = graph.settings.update { it.copy(stremioPromptDismissed = true) }
+
+    /** The update card, unless this version's offer was dismissed. */
+    val update: StateFlow<UpdateState> = combine(graph.updater.state, graph.settings.state) { state, settings ->
+        if (state is UpdateState.Available && state.release.version == settings.dismissedUpdate) UpdateState.Idle else state
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, UpdateState.Idle)
 
     init {
         load()

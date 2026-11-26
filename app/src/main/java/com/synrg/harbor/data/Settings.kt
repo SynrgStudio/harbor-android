@@ -46,6 +46,10 @@ data class Settings(
     val addonsSeeded: Boolean = false,
     /** "Ahora no" on the home card that offers to link the Stremio account. */
     val stremioPromptDismissed: Boolean = false,
+    /** Look for new versions on GitHub when the app opens. */
+    val checkUpdates: Boolean = true,
+    /** The version whose offer got "Ahora no": Home stays quiet until a newer one. */
+    val dismissedUpdate: String? = null,
     /** ISO 639-1 code, or "" for the file's default track. */
     val audioLanguage: String = "",
     /** ISO 639-1 code, or "" for no subtitles. */
