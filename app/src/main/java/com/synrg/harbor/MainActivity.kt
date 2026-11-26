@@ -19,6 +19,7 @@ import com.synrg.harbor.episodes.EpisodeCheckJob
 import com.synrg.harbor.ui.HarborRoot
 import com.synrg.harbor.ui.theme.HarborTheme
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -36,6 +37,9 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_SEASON = "season"
     }
 
+    /** What a notification or shortcut asked this window to open; its HarborRoot takes it and clears it. */
+    private val links = MutableStateFlow<AppLink?>(null)
+
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,7 +48,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
-        setContent { HarborTheme { HarborRoot() } }
+        setContent { HarborTheme { HarborRoot(links) } }
         if (savedInstanceState == null) handleIntent(intent)
     }
 
@@ -86,15 +90,15 @@ class MainActivity : ComponentActivity() {
                 val type = MediaType.fromTmdb(intent.getStringExtra(EXTRA_TYPE) ?: "") ?: return
                 val id = intent.getIntExtra(EXTRA_ID, -1)
                 val season = intent.getIntExtra(EXTRA_SEASON, -1).takeIf { it >= 0 }
-                if (id > 0) graph.links.value = AppLink.Open(type, id, season)
+                if (id > 0) links.value = AppLink.Open(type, id, season)
                 return
             }
             ACTION_RESUME -> {
-                intent.getStringExtra(EXTRA_KEY)?.let { graph.links.value = AppLink.Resume(it) }
+                intent.getStringExtra(EXTRA_KEY)?.let { links.value = AppLink.Resume(it) }
                 return
             }
             ACTION_DOWNLOADS -> {
-                graph.links.value = AppLink.Downloads
+                links.value = AppLink.Downloads
                 return
             }
         }

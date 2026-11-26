@@ -46,6 +46,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.synrg.harbor.core.AppLink
+import kotlinx.coroutines.flow.MutableStateFlow
 import com.synrg.harbor.ui.downloads.DownloadsScreen
 import com.synrg.harbor.data.MediaItem
 import com.synrg.harbor.data.MediaType
@@ -95,7 +96,7 @@ private val tabs = listOf(
 private val BarHeight = 64.dp
 
 @Composable
-fun HarborRoot() {
+fun HarborRoot(links: MutableStateFlow<AppLink?>) {
     val nav = rememberNavController()
     val context = LocalContext.current
     val graph = context.graph
@@ -130,9 +131,9 @@ fun HarborRoot() {
 
     // Notifications and launcher shortcuts land here (see MainActivity.handleIntent).
     LaunchedEffect(Unit) {
-        graph.links.collect { link ->
+        links.collect { link ->
             link ?: return@collect
-            graph.links.value = null
+            links.value = null
             when (link) {
                 is AppLink.Open -> nav.navigate(DetailRoute(link.type.tmdb, link.id, season = link.season))
                 is AppLink.Resume -> graph.progress.get(link.progressKey)?.let(::resume)

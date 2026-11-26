@@ -17639,7 +17639,7 @@ SPLcom/synrg/harbor/ui/HarborRootKt;->HarborRoot$lambda$4$4$0$0(Lcom/synrg/harbo
 SPLcom/synrg/harbor/ui/HarborRootKt;->HarborRoot$lambda$4$4$0(Lcom/synrg/harbor/core/AppGraph;FLandroidx/navigation/NavHostController;Landroid/content/Context;Landroidx/navigation/NavGraphBuilder;)Lkotlin/Unit;
 SPLcom/synrg/harbor/ui/HarborRootKt;->HarborRoot$lambda$4$7(Landroidx/navigation/NavHostController;Ldev/chrisbanes/haze/HazeState;Landroidx/navigation/NavDestination;Landroidx/compose/animation/AnimatedVisibilityScope;Landroidx/compose/runtime/Composer;I)Lkotlin/Unit;
 SPLcom/synrg/harbor/ui/HarborRootKt;->HarborRoot$lambda$5(ILandroidx/compose/runtime/Composer;I)Lkotlin/Unit;
-SPLcom/synrg/harbor/ui/HarborRootKt;->HarborRoot(Landroidx/compose/runtime/Composer;I)V
+SPLcom/synrg/harbor/ui/HarborRootKt;->HarborRoot(Lkotlinx/coroutines/flow/MutableStateFlow;Landroidx/compose/runtime/Composer;I)V
 Lcom/synrg/harbor/ui/HarborRootKt$$ExternalSyntheticLambda1;
 SPLcom/synrg/harbor/ui/HarborRootKt$$ExternalSyntheticLambda1;-><init>()V
 Lcom/synrg/harbor/ui/HarborRootKt$$ExternalSyntheticLambda10;

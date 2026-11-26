@@ -71,9 +71,6 @@ class AppGraph(val app: Application) {
     val episodes: EpisodeCalendar by lazy {
         EpisodeCalendar(store("episodes.json", CalendarData.serializer(), CalendarData()), addons, meta, progress, watchlist, sync)
     }
-
-    /** A notification or shortcut asking the UI to open something; HarborRoot takes it and clears it. */
-    val links = kotlinx.coroutines.flow.MutableStateFlow<AppLink?>(null)
     val network: NetworkMonitor by lazy { NetworkMonitor(app) }
     val torrents: TorrentEngine by lazy { TorrentEngine(app, network, scope) }
     val updater: Updater by lazy { Updater(app, http, json, settings, scope) }
