@@ -6,7 +6,8 @@ param([string]$Notes, [string]$NotesFile, [switch]$Draft)
 . "$PSScriptRoot\env.ps1"
 Set-Location $ProjectRoot
 
-$version = [regex]::Match((Get-Content app\build.gradle.kts -Raw), 'versionName = "([^"]+)"').Groups[1].Value
+$version = [regex]::Match((Get-Content app\build.gradle.kts -Raw), 'versionName = [^
+]*"(\d[^"]*)"').Groups[1].Value
 if (-not $version) { throw 'No encontré versionName en app/build.gradle.kts.' }
 $tag = "v$version"
 if (-not (Select-String -Path local.properties -Pattern '^harbor\.signing\.storeFile=' -Quiet)) {
