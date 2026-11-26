@@ -41,7 +41,7 @@ class BaselineProfileGenerator {
             device.waitForText("Tendencias de la semana")
         }
 
-        for (tab in listOf("Buscar", "Mi lista", "Ajustes", "Inicio")) {
+        for (tab in listOf("Continuar", "Buscar", "Mi lista", "Ajustes", "Inicio")) {
             device.clickText(tab)
             device.waitForIdle()
         }

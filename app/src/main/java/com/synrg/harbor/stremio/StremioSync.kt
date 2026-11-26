@@ -184,6 +184,22 @@ class StremioSync(
         job.start()
     }
 
+    /** Removed from "Seguir viendo": back to 0 in the account too, which is what Stremio does. */
+    fun dismissed(entry: ProgressEntry) {
+        if (!signedIn) return
+        val imdb = entry.imdbId ?: return
+        pendingProgress.remove("${entry.type.stremio}:$imdb")?.cancel()
+        scope.launch {
+            runCatching {
+                val existing = account.libraryGet(listOf(imdb)).firstOrNull() ?: return@runCatching
+                val state = existing["state"] as? JsonObject ?: return@runCatching
+                val now = JsonPrimitive(iso(System.currentTimeMillis()))
+                val rewound = JsonObject(state + ("timeOffset" to JsonPrimitive(0)))
+                account.libraryPut(listOf(JsonObject(existing + mapOf("state" to rewound, "_mtime" to now))))
+            }
+        }
+    }
+
     fun watchlistChanged(item: MediaItem, imdbId: String?, added: Boolean) {
         if (!signedIn) return
         scope.launch {

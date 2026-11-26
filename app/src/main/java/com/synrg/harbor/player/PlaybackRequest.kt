@@ -23,6 +23,24 @@ data class PlaybackRequest(
     val progressKey: String get() = ProgressEntry.key(type, tmdbId, season, episode)
     val stremioType: String get() = type.stremio
     val stremioId: String? get() = imdbId?.let { if (season != null && episode != null) "$it:$season:$episode" else it }
+    companion object {
+        /** Plays [entry] again with the source it was last played with, from where it was left. */
+        fun resume(entry: ProgressEntry, stream: SavedStream) = PlaybackRequest(
+            type = entry.type,
+            tmdbId = entry.tmdbId,
+            imdbId = entry.imdbId,
+            season = entry.season,
+            episode = entry.episode,
+            title = entry.title,
+            episodeTitle = entry.episodeTitle,
+            poster = entry.poster,
+            backdrop = entry.backdrop,
+            still = entry.still,
+            stream = stream,
+            startPositionMs = entry.positionMs.takeIf { !entry.finished && it > 30_000 } ?: 0L,
+        )
+    }
+
     val displaySubtitle: String?
         get() = if (season != null && episode != null) "T$season · E$episode" + (episodeTitle?.let { " — $it" } ?: "") else null
 }

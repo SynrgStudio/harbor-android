@@ -67,15 +67,17 @@ data class ProgressData(
 
 class ProgressRepository(private val store: JsonStore<ProgressData>) {
 
-    /** One card per title: the most recent unfinished thing, newest first. */
-    val continueWatching: Flow<List<ProgressEntry>> = store.state.map { data ->
+    /** One entry per title: the most recent unfinished thing, newest first. */
+    val inProgress: Flow<List<ProgressEntry>> = store.state.map { data ->
         data.entries.values
             .filter { it.durationMs > 0 && it.fraction > 0.01f && !it.finished }
             .groupBy { it.type to it.tmdbId }
             .map { (_, list) -> list.maxBy { it.updatedAt } }
             .sortedByDescending { it.updatedAt }
-            .take(20)
     }.distinctUntilChanged()
+
+    /** The home row: the newest 20 of [inProgress]. */
+    val continueWatching: Flow<List<ProgressEntry>> = inProgress.map { it.take(20) }.distinctUntilChanged()
 
     fun forTitle(type: MediaType, id: Int): Flow<List<ProgressEntry>> = store.state.map { data ->
         data.entries.values.filter { it.type == type && it.tmdbId == id }
@@ -86,6 +88,19 @@ class ProgressRepository(private val store: JsonStore<ProgressData>) {
     val all: Collection<ProgressEntry> get() = store.value.entries.values
 
     fun save(entry: ProgressEntry) = store.update { it.copy(entries = it.entries + (entry.key to entry)) }
+
+    /**
+     * Takes a title out of "Seguir viendo" without forgetting what was watched: unfinished entries go
+     * back to the start (finished episodes keep their mark), like Stremio's "remove from continue watching".
+     */
+    fun dismiss(type: MediaType, id: Int) = store.update { data ->
+        val now = System.currentTimeMillis()
+        data.copy(
+            entries = data.entries.mapValues { (_, e) ->
+                if (e.type == type && e.tmdbId == id && !e.finished && e.positionMs > 0) e.copy(positionMs = 0, updatedAt = now) else e
+            },
+        )
+    }
 
     fun remove(type: MediaType, id: Int) = store.update { data ->
         data.copy(entries = data.entries.filterValues { !(it.type == type && it.tmdbId == id) })

@@ -50,6 +50,7 @@ import com.synrg.harbor.data.ProgressEntry
 import com.synrg.harbor.graph
 import com.synrg.harbor.player.PlaybackRequest
 import com.synrg.harbor.player.PlayerActivity
+import com.synrg.harbor.ui.continuewatching.ContinueScreen
 import com.synrg.harbor.ui.detail.DetailScreen
 import com.synrg.harbor.ui.detail.DetailViewModel
 import com.synrg.harbor.ui.home.HomeScreen
@@ -70,6 +71,7 @@ import dev.chrisbanes.haze.hazeSource
 import kotlinx.serialization.Serializable
 
 @Serializable object HomeRoute
+@Serializable object ContinueRoute
 @Serializable object SearchRoute
 @Serializable object LibraryRoute
 @Serializable object SettingsRoute
@@ -79,6 +81,7 @@ private data class Tab(val route: Any, val label: String, val icon: ImageVector)
 
 private val tabs = listOf(
     Tab(HomeRoute, "Inicio", HIcons.Home),
+    Tab(ContinueRoute, "Continuar", HIcons.History),
     Tab(SearchRoute, "Buscar", HIcons.Search),
     Tab(LibraryRoute, "Mi lista", HIcons.Bookmark),
     Tab(SettingsRoute, "Ajustes", HIcons.Settings),
@@ -101,11 +104,17 @@ fun HarborRoot() {
         graph.previews["${item.type.tmdb}:${item.id}"] = item
         nav.navigate(DetailRoute(item.type.tmdb, item.id, autoplay))
     }
-    fun resume(entry: ProgressEntry) = open(
-        MediaItem(entry.tmdbId, entry.type, entry.title, posterPath = entry.poster, backdropPath = entry.backdrop),
-        autoplay = true,
-    )
     fun play(request: PlaybackRequest) = context.startActivity(PlayerActivity.intent(context, request, graph.json))
+    fun details(entry: ProgressEntry, autoplay: Boolean = false) = open(
+        MediaItem(entry.tmdbId, entry.type, entry.title, posterPath = entry.poster, backdropPath = entry.backdrop),
+        autoplay,
+    )
+    /** Straight to the player with the source used last time; without one (or watched elsewhere), the sources list. */
+    fun resume(entry: ProgressEntry) {
+        val saved = entry.lastStream
+        if (saved != null && (saved.url != null || graph.torrents.available)) play(PlaybackRequest.resume(entry, saved))
+        else details(entry, autoplay = true)
+    }
 
     Box(Modifier.fillMaxSize().background(HarborColors.Bg)) {
         NavHost(
@@ -127,12 +136,15 @@ fun HarborRoot() {
                     onConnectStremio = { switchTab(nav, SettingsRoute) },
                 )
             }
+            composable<ContinueRoute> {
+                ContinueScreen(bottomPadding, onResume = ::resume, onDetails = { details(it) })
+            }
             composable<SearchRoute> {
                 val vm: SearchViewModel = viewModel { SearchViewModel(graph) }
                 SearchScreen(vm, bottomPadding, onOpen = { open(it) })
             }
             composable<LibraryRoute> {
-                LibraryScreen(bottomPadding, onOpen = { open(it) }, onResume = ::resume)
+                LibraryScreen(bottomPadding, onOpen = { open(it) })
             }
             composable<SettingsRoute> {
                 SettingsScreen(bottomPadding)
@@ -171,7 +183,7 @@ private fun BottomBar(nav: NavHostController, hazeState: HazeState, destination:
     Row(
         Modifier
             .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .padding(horizontal = 12.dp, vertical = 12.dp)
             .height(BarHeight)
             .clip(shape)
             .hazeEffect(
@@ -187,15 +199,14 @@ private fun BottomBar(nav: NavHostController, hazeState: HazeState, destination:
                 inputScale = HazeInputScale.Fixed(0.5f)
             }
             .border(1.dp, Color(0x1FFFFFFF), shape)
-            .padding(horizontal = 6.dp),
+            .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
         tabs.forEach { tab ->
             val selected = destination?.hasRoute(tab.route::class) == true
             Column(
                 Modifier
-                    .width(76.dp)
+                    .weight(1f)
                     .clip(RoundedCornerShape(18.dp))
                     .clickable(remember { MutableInteractionSource() }, null) { if (!selected) switchTab(nav, tab.route) }
                     .padding(vertical = 8.dp),
@@ -212,6 +223,7 @@ private fun BottomBar(nav: NavHostController, hazeState: HazeState, destination:
                     tab.label,
                     style = MaterialTheme.typography.labelSmall,
                     color = if (selected) HarborColors.Text else HarborColors.TextFaint,
+                    maxLines = 1,
                     modifier = Modifier.padding(top = 3.dp),
                 )
             }

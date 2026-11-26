@@ -35,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -84,6 +85,7 @@ fun DetailScreen(
     val inWatchlist by vm.inWatchlist.collectAsStateWithLifecycle()
     val streams by vm.streams.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
+    LaunchedEffect(vm) { vm.playRequests.collect { onPlay(it) } }
 
     Box(Modifier.fillMaxSize().background(HarborColors.Bg)) {
         val details = state.details
@@ -93,7 +95,12 @@ fun DetailScreen(
                     Header(details, state.partial, listState.firstVisibleItemIndex == 0, { listState.firstVisibleItemScrollOffset })
                 }
                 item(key = "actions", contentType = "actions") {
-                    Actions(details, vm.mainButtonLabel(progress), inWatchlist, onPlay = vm::playMain, onToggleList = vm::toggleWatchlist)
+                    Actions(
+                        details, vm.mainButtonLabel(progress), inWatchlist,
+                        onPlay = vm::playMain,
+                        onSources = if (vm.resumesDirectly(progress)) vm::chooseSource else null,
+                        onToggleList = vm::toggleWatchlist,
+                    )
                 }
                 item(key = "overview", contentType = "overview") { Overview(details) }
                 if (details.item.type == MediaType.Tv && details.seasons.isNotEmpty()) {
@@ -232,9 +239,20 @@ private fun MetaLine(details: Details, partial: Boolean) {
 }
 
 @Composable
-private fun Actions(details: Details, mainLabel: String, inWatchlist: Boolean, onPlay: () -> Unit, onToggleList: () -> Unit) {
+private fun Actions(
+    details: Details,
+    mainLabel: String,
+    inWatchlist: Boolean,
+    onPlay: () -> Unit,
+    onSources: (() -> Unit)?,
+    onToggleList: () -> Unit,
+) {
     Column(Modifier.padding(horizontal = 20.dp).padding(top = 18.dp)) {
-        PrimaryButton(mainLabel, HIcons.Play, onPlay, modifier = Modifier.fillMaxWidth())
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PrimaryButton(mainLabel, HIcons.Play, onPlay, modifier = Modifier.weight(1f))
+            // Resuming skips the sources list; this is the way back to it (dead torrent, other quality).
+            if (onSources != null) GlassButton("Fuentes", null, onSources)
+        }
         Spacer(Modifier.height(10.dp))
         GlassButton(
             if (inWatchlist) "En mi lista" else "Agregar a mi lista",

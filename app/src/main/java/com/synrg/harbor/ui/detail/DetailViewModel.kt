@@ -13,6 +13,9 @@ import com.synrg.harbor.player.PlaybackRequest
 import com.synrg.harbor.stremio.AddonStreams
 import com.synrg.harbor.stremio.StreamOption
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -78,6 +81,10 @@ class DetailViewModel(
     val inWatchlist: StateFlow<Boolean> = graph.watchlist.contains(type, id)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    private val _playRequests = Channel<PlaybackRequest>(Channel.BUFFERED)
+    /** Playback that starts without the sources list (resuming with the source used last time). */
+    val playRequests: Flow<PlaybackRequest> = _playRequests.receiveAsFlow()
+
     private var streamsJob: Job? = null
     private var seasonJob: Job? = null
 
@@ -131,20 +138,44 @@ class DetailViewModel(
         graph.sync.watchlistChanged(details.item, details.imdbId, added)
     }
 
-    /** The big button: the movie, or the episode you are on / the next one. */
+    /**
+     * The big button: the movie, or the episode you are on / the next one. Something half watched
+     * resumes right away with the source it was playing; otherwise the sources list opens.
+     */
     fun playMain() {
         if (_state.value.partial) {
             autoplay = true // runs as soon as the full details arrive
             return
         }
-        if (type == MediaType.Movie) {
-            openStreams(StreamTarget())
-            return
-        }
         viewModelScope.launch {
-            val details = _state.value.details ?: return@launch
-            val latest = progress.value.values.maxByOrNull { it.updatedAt }
-            val target = if (latest?.season != null && latest.episode != null) {
+            val target = mainTarget() ?: return@launch
+            val entry = progress.value[ProgressEntry.key(type, id, target.season, target.episode)]
+            val saved = entry?.lastStream?.takeIf { !entry.finished && entry.positionMs > 0 && playable(it) }
+            val request = saved?.let { playbackRequest(target, it) }
+            if (request != null) _playRequests.send(request) else openStreams(target)
+        }
+    }
+
+    /** "Fuentes": the sources list for what the big button would play, to switch to another one. */
+    fun chooseSource() {
+        viewModelScope.launch { mainTarget()?.let(::openStreams) }
+    }
+
+    /** True when the big button resumes directly, so the screen also offers "Fuentes". */
+    fun resumesDirectly(progress: Map<String, ProgressEntry>): Boolean {
+        val latest = progress.values.maxByOrNull { it.updatedAt } ?: return false
+        val saved = latest.lastStream ?: return false
+        return !latest.finished && latest.positionMs > 0 && playable(saved)
+    }
+
+    private fun playable(saved: SavedStream) = saved.url != null || graph.torrents.available
+
+    private suspend fun mainTarget(): StreamTarget? {
+        if (type == MediaType.Movie) return StreamTarget()
+        val details = _state.value.details ?: return null
+        val latest = progress.value.values.maxByOrNull { it.updatedAt }
+        return run {
+            if (latest?.season != null && latest.episode != null) {
                 if (!latest.finished) {
                     episodeTarget(latest.season, latest.episode)
                 } else {
@@ -159,7 +190,6 @@ class DetailViewModel(
             } else {
                 details.seasons.firstOrNull()?.let { episodeTarget(it.number, 1) }
             }
-            if (target != null) openStreams(target)
         }
     }
 
