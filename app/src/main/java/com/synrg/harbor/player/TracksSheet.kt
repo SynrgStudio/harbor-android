@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -36,12 +37,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import android.os.SystemClock
 import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
+import com.synrg.harbor.BuildConfig
 import com.synrg.harbor.ui.theme.HIcons
 import com.synrg.harbor.ui.theme.HarborColors
 import java.util.Locale
@@ -112,14 +115,7 @@ fun TracksPanel(player: Player, status: PlayerStatus, controller: PlayerActivity
         version++
     }
 
-    Column(
-        Modifier
-            .fillMaxHeight()
-            .width(400.dp)
-            .background(Color(0xF2101318))
-            .pointerInput(Unit) { detectTapGestures { } } // keep taps from reaching the video
-            .padding(top = 20.dp, start = 20.dp, end = 20.dp),
-    ) {
+    PanelFrame {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(
                 Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(HarborColors.SurfaceHigh).padding(3.dp),
@@ -153,6 +149,7 @@ fun TracksPanel(player: Player, status: PlayerStatus, controller: PlayerActivity
                     items(audio) { c -> Option(c.label, c.selected) { select(c, C.TRACK_TYPE_AUDIO) } }
                 }
                 Tab.Subtitles -> {
+                    if (!textDisabled) item { SubtitleSync(status.subtitleDelayMs, controller::setSubtitleDelay) }
                     item {
                         Option("Desactivados", textDisabled) {
                             player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
@@ -177,7 +174,7 @@ fun TracksPanel(player: Player, status: PlayerStatus, controller: PlayerActivity
                                 val name = Languages.label(sub.lang)
                                 val n = (seen[name] ?: 0) + 1
                                 seen[name] = n
-                                sub to "$name $n"
+                                sub to "$name $n" + if (sub.url.startsWith("file://")) " · guardado" else ""
                             }
                             items(labelled, key = { it.first.url }) { (sub, label) ->
                                 Option(label, sub.url == activeExternalUrl && !textDisabled) {
@@ -195,6 +192,104 @@ fun TracksPanel(player: Player, status: PlayerStatus, controller: PlayerActivity
                             speed = s
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PanelFrame(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        Modifier
+            .fillMaxHeight()
+            .width(400.dp)
+            .background(Color(0xF2101318))
+            .pointerInput(Unit) { detectTapGestures { } } // keep taps from reaching the video
+            .padding(top = 20.dp, start = 20.dp, end = 20.dp),
+        content = content,
+    )
+}
+
+private val delayFormat = Locale.forLanguageTag("es-AR")
+
+private fun formatDelay(ms: Long): String = String.format(delayFormat, "%+.1f s", ms / 1000.0).replace('-', '−')
+
+/** Moves the subtitles against the video in small steps, while watching them over the picture. */
+@Composable
+private fun SubtitleSync(delayMs: Long, onChange: (Long) -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(bottom = 10.dp).clip(RoundedCornerShape(12.dp))
+            .background(HarborColors.SurfaceHigh).padding(12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Sincronía", style = MaterialTheme.typography.labelLarge, color = HarborColors.Text)
+            Spacer(Modifier.weight(1f))
+            Text(
+                if (delayMs == 0L) "Sin ajuste" else formatDelay(delayMs),
+                style = MaterialTheme.typography.labelLarge,
+                color = if (delayMs == 0L) HarborColors.TextDim else HarborColors.Accent,
+            )
+            if (delayMs != 0L) {
+                Text(
+                    "Restablecer",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = HarborColors.TextDim,
+                    modifier = Modifier.padding(start = 6.dp).clip(RoundedCornerShape(8.dp)).clickable { onChange(0) }
+                        .padding(horizontal = 6.dp, vertical = 4.dp),
+                )
+            }
+        }
+        Spacer(Modifier.size(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf(-500L, -100L, 100L, 500L).forEach { step ->
+                Box(
+                    Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(HarborColors.SurfaceHighest)
+                        .clickable { onChange(delayMs + step) }.padding(vertical = 9.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(formatDelay(step), style = MaterialTheme.typography.labelLarge, color = HarborColors.Text)
+                }
+            }
+        }
+        Spacer(Modifier.size(6.dp))
+        Text(
+            "Si aparecen antes de que hablen, sumá; si aparecen tarde, restá.",
+            style = MaterialTheme.typography.bodySmall,
+            color = HarborColors.TextFaint,
+        )
+    }
+}
+
+/** Sleep timer choices: a few durations, or stop when this video ends. */
+@Composable
+fun SleepPanel(current: SleepTimer?, isEpisode: Boolean, onPick: (SleepTimer?) -> Unit, onClose: () -> Unit) {
+    PanelFrame {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Temporizador", style = MaterialTheme.typography.titleMedium, color = HarborColors.Text, modifier = Modifier.weight(1f).padding(start = 4.dp))
+            Icon(
+                HIcons.Close, "Cerrar", tint = HarborColors.TextDim,
+                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(20.dp)).clickable(onClick = onClose).padding(9.dp),
+            )
+        }
+        Hint("Baja el volumen de a poco y pausa; después la pantalla se apaga sola.")
+        LazyColumn(contentPadding = PaddingValues(bottom = 24.dp), modifier = Modifier.fillMaxWidth()) {
+            item { Option("Desactivado", current == null) { onPick(null) } }
+            // Debug builds add a 1-minute timer to try it out.
+            items(listOfNotNull(1.takeIf { BuildConfig.DEBUG }, 15, 30, 45, 60, 90)) { minutes ->
+                val label = when {
+                    minutes == 1 -> "1 minuto"
+                    minutes < 60 -> "$minutes minutos"
+                    minutes == 60 -> "1 hora"
+                    else -> "1 h ${minutes - 60} min"
+                }
+                Option(label, (current as? SleepTimer.At)?.minutes == minutes) {
+                    onPick(SleepTimer.At(SystemClock.elapsedRealtime() + minutes * 60_000L, minutes))
+                }
+            }
+            item {
+                Option(if (isEpisode) "Al terminar este episodio" else "Al terminar la película", current == SleepTimer.EndOfVideo) {
+                    onPick(SleepTimer.EndOfVideo)
                 }
             }
         }

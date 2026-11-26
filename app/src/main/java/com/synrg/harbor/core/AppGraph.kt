@@ -2,6 +2,10 @@ package com.synrg.harbor.core
 
 import android.app.Application
 import com.synrg.harbor.data.ProgressData
+import com.synrg.harbor.downloads.DownloadData
+import com.synrg.harbor.downloads.Downloads
+import com.synrg.harbor.episodes.CalendarData
+import com.synrg.harbor.episodes.EpisodeCalendar
 import com.synrg.harbor.data.ProgressRepository
 import com.synrg.harbor.data.Settings
 import com.synrg.harbor.data.SettingsRepository
@@ -10,6 +14,7 @@ import com.synrg.harbor.data.WatchlistRepository
 import com.synrg.harbor.stremio.AddonRepository
 import com.synrg.harbor.stremio.StremioAccount
 import com.synrg.harbor.stremio.StremioSync
+import com.synrg.harbor.stremio.WatchedMarks
 import com.synrg.harbor.tmdb.Metadata
 import com.synrg.harbor.tmdb.TmdbAddon
 import com.synrg.harbor.tmdb.TmdbApi
@@ -61,9 +66,20 @@ class AppGraph(val app: Application) {
     val meta: Metadata by lazy { Metadata(settings, TmdbApi(http, json, settings), TmdbAddon(http, json, settings)) }
     val addons: AddonRepository by lazy { AddonRepository(http, json, settings) }
     val stremio: StremioAccount by lazy { StremioAccount(http, json, settings, addons) }
-    val sync: StremioSync by lazy { StremioSync(stremio, settings, progress, watchlist, meta, scope) }
-    val torrents: TorrentEngine by lazy { TorrentEngine(app) }
+    val sync: StremioSync by lazy { StremioSync(stremio, addons, settings, progress, watchlist, meta, scope) }
+    val marks: WatchedMarks by lazy { WatchedMarks(progress, sync) }
+    val episodes: EpisodeCalendar by lazy {
+        EpisodeCalendar(store("episodes.json", CalendarData.serializer(), CalendarData()), addons, meta, progress, watchlist, sync)
+    }
+
+    /** A notification or shortcut asking the UI to open something; HarborRoot takes it and clears it. */
+    val links = kotlinx.coroutines.flow.MutableStateFlow<AppLink?>(null)
+    val network: NetworkMonitor by lazy { NetworkMonitor(app) }
+    val torrents: TorrentEngine by lazy { TorrentEngine(app, network, scope) }
     val updater: Updater by lazy { Updater(app, http, json, settings, scope) }
+    val downloads: Downloads by lazy {
+        Downloads(app, store("downloads.json", DownloadData.serializer(), DownloadData()), torrents, mediaHttp, network, settings, progress, addons)
+    }
 
     /** What a list already knew about a title, so its detail page can paint before the full data arrives. */
     val previews = java.util.concurrent.ConcurrentHashMap<String, com.synrg.harbor.data.MediaItem>()

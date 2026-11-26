@@ -25,8 +25,8 @@ android {
         minSdk = 29
         targetSdk = 36
         // -Pharbor.versionCode/-Pharbor.versionName build an "older" copy to test the in-app updater.
-        versionCode = providers.gradleProperty("harbor.versionCode").orNull?.toInt() ?: 8
-        versionName = providers.gradleProperty("harbor.versionName").orNull ?: "0.5.1"
+        versionCode = providers.gradleProperty("harbor.versionCode").orNull?.toInt() ?: 9
+        versionName = providers.gradleProperty("harbor.versionName").orNull ?: "0.6.0"
         // In-app updates from GitHub Releases; a store build (F-Droid) would turn this off.
         buildConfigField("boolean", "SELF_UPDATE", "true")
     }
@@ -123,4 +123,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.haze)
+
+    testImplementation(libs.junit)
 }

@@ -26,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -44,6 +45,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.synrg.harbor.core.AppLink
+import com.synrg.harbor.ui.downloads.DownloadsScreen
 import com.synrg.harbor.data.MediaItem
 import com.synrg.harbor.data.MediaType
 import com.synrg.harbor.data.ProgressEntry
@@ -75,7 +78,9 @@ import kotlinx.serialization.Serializable
 @Serializable object SearchRoute
 @Serializable object LibraryRoute
 @Serializable object SettingsRoute
-@Serializable data class DetailRoute(val type: String, val id: Int, val autoplay: Boolean = false)
+@Serializable object DownloadsRoute
+/** [season]: the one to show first (a new episode's), instead of the one being watched. */
+@Serializable data class DetailRoute(val type: String, val id: Int, val autoplay: Boolean = false, val season: Int? = null)
 
 private data class Tab(val route: Any, val label: String, val icon: ImageVector)
 
@@ -109,11 +114,31 @@ fun HarborRoot() {
         MediaItem(entry.tmdbId, entry.type, entry.title, posterPath = entry.poster, backdropPath = entry.backdrop),
         autoplay,
     )
-    /** Straight to the player with the source used last time; without one (or watched elsewhere), the sources list. */
+    /**
+     * Straight to the player: the downloaded file if there is one, else the source used last time;
+     * without either (or watched elsewhere), the sources list.
+     */
     fun resume(entry: ProgressEntry) {
+        val local = graph.downloads.local(entry.key)
         val saved = entry.lastStream
-        if (saved != null && (saved.url != null || graph.torrents.available)) play(PlaybackRequest.resume(entry, saved))
-        else details(entry, autoplay = true)
+        when {
+            local != null -> play(local.playback(PlaybackRequest.resume(entry, local.stream).startPositionMs))
+            saved != null && saved.playable(graph.torrents.available) -> play(PlaybackRequest.resume(entry, saved))
+            else -> details(entry, autoplay = true)
+        }
+    }
+
+    // Notifications and launcher shortcuts land here (see MainActivity.handleIntent).
+    LaunchedEffect(Unit) {
+        graph.links.collect { link ->
+            link ?: return@collect
+            graph.links.value = null
+            when (link) {
+                is AppLink.Open -> nav.navigate(DetailRoute(link.type.tmdb, link.id, season = link.season))
+                is AppLink.Resume -> graph.progress.get(link.progressKey)?.let(::resume)
+                AppLink.Downloads -> nav.navigate(DownloadsRoute) { launchSingleTop = true }
+            }
+        }
     }
 
     Box(Modifier.fillMaxSize().background(HarborColors.Bg)) {
@@ -137,14 +162,32 @@ fun HarborRoot() {
                 )
             }
             composable<ContinueRoute> {
-                ContinueScreen(bottomPadding, onResume = ::resume, onDetails = { details(it) })
+                ContinueScreen(
+                    bottomPadding,
+                    onResume = ::resume,
+                    onDetails = { details(it) },
+                    onShow = { ep ->
+                        graph.previews["${MediaType.Tv.tmdb}:${ep.tmdbId}"] = MediaItem(ep.tmdbId, MediaType.Tv, ep.show, posterPath = ep.poster, backdropPath = ep.backdrop)
+                        nav.navigate(DetailRoute(MediaType.Tv.tmdb, ep.tmdbId, season = ep.season))
+                    },
+                )
             }
             composable<SearchRoute> {
                 val vm: SearchViewModel = viewModel { SearchViewModel(graph) }
                 SearchScreen(vm, bottomPadding, onOpen = { open(it) })
             }
             composable<LibraryRoute> {
-                LibraryScreen(bottomPadding, onOpen = { open(it) })
+                LibraryScreen(bottomPadding, onOpen = { open(it) }, onDownloads = { nav.navigate(DownloadsRoute) })
+            }
+            composable<DownloadsRoute> {
+                DownloadsScreen(
+                    bottomPadding = 16.dp,
+                    onBack = { nav.popBackStack() },
+                    onPlay = { item ->
+                        val resumeAt = graph.progress.get(item.id)?.takeIf { !it.finished && it.positionMs > 30_000 }?.positionMs ?: 0L
+                        play(item.playback(resumeAt))
+                    },
+                )
             }
             composable<SettingsRoute> {
                 SettingsScreen(bottomPadding)
@@ -152,7 +195,7 @@ fun HarborRoot() {
             composable<DetailRoute> { backStack ->
                 val route = backStack.toRoute<DetailRoute>()
                 val type = MediaType.fromTmdb(route.type) ?: MediaType.Movie
-                val vm: DetailViewModel = viewModel { DetailViewModel(graph, type, route.id, route.autoplay) }
+                val vm: DetailViewModel = viewModel { DetailViewModel(graph, type, route.id, route.autoplay, route.season) }
                 DetailScreen(vm, onBack = { nav.popBackStack() }, onOpen = { open(it) }, onPlay = ::play)
             }
         }

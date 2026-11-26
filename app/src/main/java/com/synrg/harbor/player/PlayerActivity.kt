@@ -7,6 +7,7 @@ import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Rational
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -32,9 +33,11 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import com.synrg.harbor.core.Connection
 import com.synrg.harbor.data.MediaType
 import com.synrg.harbor.data.ProgressEntry
 import com.synrg.harbor.data.SubtitleChoice
+import com.synrg.harbor.data.SubtitleShift
 import com.synrg.harbor.data.TrackPref
 import com.synrg.harbor.graph
 import com.synrg.harbor.stremio.AddonStreams
@@ -44,6 +47,7 @@ import com.synrg.harbor.stremio.StremioSubtitle
 import com.synrg.harbor.torrent.TorrentStats
 import com.synrg.harbor.torrent.TorrentStream
 import com.synrg.harbor.ui.theme.HarborTheme
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -69,7 +73,21 @@ data class PlayerStatus(
     val nextUp: PlaybackRequest? = null,
     val ended: Boolean = false,
     val pip: Boolean = false,
+    /** Waiting for "Reproducir igual" before streaming on this metered connection. */
+    val dataWarning: Connection? = null,
+    val subtitleDelayMs: Long = 0,
+    val sleep: SleepTimer? = null,
+    /** The timer was set to stop after this video: no next-episode countdown. */
+    val stoppedByTimer: Boolean = false,
 )
+
+@Immutable
+sealed interface SleepTimer {
+    /** Pauses at [endsAt] ([SystemClock.elapsedRealtime]). */
+    data class At(val endsAt: Long, val minutes: Int) : SleepTimer
+
+    data object EndOfVideo : SleepTimer
+}
 
 class PlayerActivity : ComponentActivity() {
     companion object {
@@ -99,6 +117,11 @@ class PlayerActivity : ComponentActivity() {
     private var userPickedText = false
     private var savedSubtitle: SubtitleChoice? = null
     private var advancing = false
+    private val subtitleTiming = SubtitleTiming()
+    /** "Reproducir igual" on mobile data counts for the rest of this player session. */
+    private var dataApproved = false
+    private var dataDecision: CompletableDeferred<Boolean>? = null
+    private var sleepJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -123,7 +146,7 @@ class PlayerActivity : ComponentActivity() {
     private fun buildPlayer(): ExoPlayer {
         httpFactory = OkHttpDataSource.Factory(graph.mediaHttp)
         val dataSourceFactory = DefaultDataSource.Factory(this, httpFactory)
-        val renderers = DefaultRenderersFactory(this)
+        val renderers = HarborRenderersFactory(this, subtitleTiming)
             // Hardware decoders first; FFmpeg only for what the phone cannot decode (DTS, TrueHD...).
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
             .setEnableDecoderFallback(true)
@@ -147,12 +170,19 @@ class PlayerActivity : ComponentActivity() {
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
             if (state == Player.STATE_READY) _status.update { it.copy(preparing = null, ended = false) }
+            updateKeepScreenOn()
             if (state == Player.STATE_ENDED) {
                 saveProgress(ended = true)
+                if (_status.value.sleep == SleepTimer.EndOfVideo) {
+                    sleepJob?.cancel()
+                    _status.update { it.copy(sleep = null, stoppedByTimer = true) }
+                }
                 // The UI shows the next-episode countdown; with nothing next, just stop here.
                 _status.update { it.copy(ended = true) }
             }
         }
+
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) = updateKeepScreenOn()
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (!isPlaying) saveProgress()
@@ -238,7 +268,10 @@ class PlayerActivity : ComponentActivity() {
         val video = _status.value.request?.progressKey ?: return false
         if (saved.externalUrl != null) {
             if (saved.video != video) return false // another episode has other subtitle files
-            selectExternalSubtitle(StremioSubtitle(saved.externalId, saved.externalUrl, saved.language), auto = true)
+            // A download carries its subtitles: use the saved file, it works offline.
+            val local = graph.downloads.get(video)?.subtitles?.firstOrNull { it.source == saved.externalUrl }
+                ?.takeIf { _status.value.request?.isLocal == true }
+            selectExternalSubtitle(StremioSubtitle(saved.externalId, local?.url ?: saved.externalUrl, saved.language), auto = true)
             return true
         }
         val match = embedded.firstOrNull { (g, i) ->
@@ -268,6 +301,7 @@ class PlayerActivity : ComponentActivity() {
         val audio = pref.audio ?: settings.audioLanguage
         subtitleLanguage = pref.subtitle ?: settings.subtitleLanguage
         savedSubtitle = pref.subtitleChoice.takeIf { subtitleLanguage.isNotEmpty() }
+        applySubtitleDelay(pref.subtitleDelay?.takeIf { it.video == request.progressKey }?.ms ?: 0L)
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
             .clearOverrides()
             .setPreferredAudioLanguage(audio.ifEmpty { null })
@@ -288,7 +322,23 @@ class PlayerActivity : ComponentActivity() {
         userPickedText = true
         subtitleLanguage = ""
         savedSubtitle = null
-        graph.progress.updateTrackPref(request.type, request.tmdbId) { it.copy(subtitle = "", subtitleChoice = null) }
+        applySubtitleDelay(0)
+        graph.progress.updateTrackPref(request.type, request.tmdbId) { it.copy(subtitle = "", subtitleChoice = null, subtitleDelay = null) }
+    }
+
+    private fun applySubtitleDelay(ms: Long) {
+        subtitleTiming.delayUs = ms * 1000
+        _status.update { it.copy(subtitleDelayMs = ms) }
+    }
+
+    /** Subtitle sync by hand: positive shows them later. Kept for this video. */
+    fun setSubtitleDelay(ms: Long) {
+        val request = _status.value.request ?: return
+        val value = ms.coerceIn(-60_000L, 60_000L)
+        applySubtitleDelay(value)
+        graph.progress.updateTrackPref(request.type, request.tmdbId) {
+            it.copy(subtitleDelay = if (value == 0L) null else SubtitleShift(request.progressKey, value))
+        }
     }
 
     /** A track of the file picked in the panel; [position] is its place among the file's subtitles. */
@@ -302,16 +352,26 @@ class PlayerActivity : ComponentActivity() {
     private fun rememberExternalSubtitle(sub: StremioSubtitle, picked: Boolean) {
         val request = _status.value.request ?: return
         if (picked) userPickedText = true
-        val choice = SubtitleChoice(request.progressKey, externalUrl = sub.url, externalId = sub.id, language = sub.lang)
+        // A downloaded subtitle is remembered by where it came from, so streaming finds it again.
+        val choice = SubtitleChoice(request.progressKey, externalUrl = graph.downloads.subtitleSource(sub.url), externalId = sub.id, language = sub.lang)
         // An automatic pick keeps the title's language as it was; it only pins which file it was.
         rememberChoice(request, choice, if (picked) Languages.toIso2(sub.lang) else null)
     }
 
     private fun rememberChoice(request: PlaybackRequest, choice: SubtitleChoice, language: String?) {
+        val previous = savedSubtitle
+        // Another subtitle needs its own sync; restoring the same one keeps it.
+        val sameSubtitle = previous != null && previous.externalUrl == choice.externalUrl &&
+            previous.language == choice.language && previous.label == choice.label
         savedSubtitle = choice
         if (language != null) subtitleLanguage = language
+        if (!sameSubtitle && _status.value.subtitleDelayMs != 0L) applySubtitleDelay(0)
         graph.progress.updateTrackPref(request.type, request.tmdbId) { pref ->
-            pref.copy(subtitle = language ?: pref.subtitle, subtitleChoice = choice)
+            pref.copy(
+                subtitle = language ?: pref.subtitle,
+                subtitleChoice = choice,
+                subtitleDelay = if (sameSubtitle) pref.subtitleDelay else null,
+            )
         }
     }
 
@@ -332,11 +392,13 @@ class PlayerActivity : ComponentActivity() {
         userPickedText = false
         subsJob?.cancel()
         subsJob = null
+        val preparing = if (request.stream.infoHash != null && request.stream.url == null) "Conectando con el torrent…" else "Cargando…"
         _status.value = PlayerStatus(
             request = request,
-            preparing = if (request.stream.infoHash != null && request.stream.url == null) "Conectando con el torrent…" else "Cargando…",
+            preparing = preparing,
             pip = _status.value.pip,
             hasNext = request.type == MediaType.Tv,
+            sleep = _status.value.sleep,
         )
         player.stop()
         player.clearMediaItems()
@@ -344,6 +406,16 @@ class PlayerActivity : ComponentActivity() {
         loadJob = lifecycleScope.launch {
             if (previousTorrent != null && previousTorrent != preparedTorrent?.second?.torrentId) {
                 graph.torrents.close(previousTorrent)
+            }
+            val connection = graph.network.current
+            if (!dataApproved && connection.metered && graph.settings.current.askOnMobileData && !request.isLocal) {
+                val decision = CompletableDeferred<Boolean>().also { dataDecision = it }
+                _status.update { it.copy(dataWarning = connection, preparing = null) }
+                if (!decision.await()) {
+                    finish()
+                    return@launch
+                }
+                _status.update { it.copy(dataWarning = null, preparing = preparing) }
             }
             val uri = runCatching { resolve(request) }.getOrElse { e ->
                 _status.update { it.copy(error = e.message ?: "No se pudo abrir la fuente", preparing = null) }
@@ -360,6 +432,51 @@ class PlayerActivity : ComponentActivity() {
             player.play()
             startProgressLoop()
         }
+    }
+
+    /** The answer to the mobile-data warning: play anyway, or leave the player. */
+    fun answerDataWarning(play: Boolean) {
+        if (play) dataApproved = true
+        dataDecision?.complete(play)
+        dataDecision = null
+    }
+
+    // --- Sleep timer ----------------------------------------------------------------------------
+
+    fun setSleepTimer(timer: SleepTimer?) {
+        sleepJob?.cancel()
+        sleepJob = null
+        _status.update { it.copy(sleep = timer) }
+        if (timer is SleepTimer.At) {
+            sleepJob = lifecycleScope.launch {
+                delay(timer.endsAt - SystemClock.elapsedRealtime())
+                fallAsleep()
+            }
+        }
+    }
+
+    /** Lowers the volume over a few seconds, then pauses: no sudden silence if still awake. */
+    private suspend fun fallAsleep() {
+        val volume = player.volume
+        try {
+            if (player.isPlaying) {
+                for (i in 1..16) {
+                    player.volume = volume * (1f - i / 16f)
+                    delay(500)
+                }
+            }
+            player.pause()
+        } finally {
+            player.volume = volume
+            _status.update { it.copy(sleep = null) }
+        }
+    }
+
+    /** The screen stays on while playing or loading; paused, it sleeps as usual. */
+    private fun updateKeepScreenOn() {
+        val on = player.playWhenReady && player.playbackState != Player.STATE_ENDED && player.playbackState != Player.STATE_IDLE
+        if (on) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
     private suspend fun resolve(request: PlaybackRequest): String {
@@ -459,13 +576,19 @@ class PlayerActivity : ComponentActivity() {
         _status.value.externalSubs?.let { return it }
         val request = _status.value.request ?: return emptyList()
         val id = request.stremioId
+        // Subtitles saved with a download come first: they work without internet.
+        val local = if (request.isLocal) {
+            graph.downloads.get(request.progressKey)?.subtitles.orEmpty().mapIndexed { i, s -> StremioSubtitle("local$i", s.url, s.lang) }
+        } else emptyList()
         if (id == null) {
-            _status.update { it.copy(externalSubs = emptyList()) }
-            return emptyList()
+            _status.update { it.copy(externalSubs = local) }
+            return local
         }
         val job = subsJob ?: lifecycleScope.async {
             _status.update { it.copy(loadingSubs = true) }
-            val subs = runCatching { graph.addons.subtitles(request.stremioType, id) }.getOrDefault(emptyList())
+            val online = runCatching { graph.addons.subtitles(request.stremioType, id) }.getOrDefault(emptyList())
+            val sources = local.map { graph.downloads.subtitleSource(it.url) }.toSet()
+            val subs = local + online.filterNot { it.url in sources }
             val preferred = subtitleLanguage
             val sorted = subs.distinctBy { it.url }.sortedBy { if (Languages.matches(it.lang, preferred)) 0 else 1 }
             _status.update { if (it.request == request) it.copy(externalSubs = sorted, loadingSubs = false) else it }
@@ -532,6 +655,14 @@ class PlayerActivity : ComponentActivity() {
     private suspend fun findNext(request: PlaybackRequest): PlaybackRequest? {
         val season = request.season ?: return null
         val episode = request.episode ?: return null
+        // Downloaded next episode first: it plays without internet (and without looking anything up).
+        graph.downloads.list.firstOrNull { d ->
+            d.type == MediaType.Tv && d.tmdbId == request.tmdbId && d.localFile != null &&
+                ((d.season == season && d.episode == episode + 1) || (d.season == season + 1 && d.episode == 1))
+        }?.let { d ->
+            val resume = graph.progress.get(d.id)?.takeIf { !it.finished }?.positionMs ?: 0L
+            return d.playback(resume)
+        }
         val imdb = request.imdbId ?: return null
         val meta = graph.meta
         var next = meta.season(request.tmdbId, season).firstOrNull { it.number == episode + 1 }

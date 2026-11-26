@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.synrg.harbor.data.SavedStream
+import com.synrg.harbor.downloads.DownloadItem
 import com.synrg.harbor.graph
 import com.synrg.harbor.stremio.AddonStreams
 import com.synrg.harbor.stremio.Quality
@@ -62,7 +63,15 @@ private enum class QualityFilter(val label: String, val match: (Quality) -> Bool
 }
 
 @Composable
-fun StreamsSheet(ui: StreamsUi, title: String, onDismiss: () -> Unit, onPick: (SavedStream) -> Unit) {
+fun StreamsSheet(
+    ui: StreamsUi,
+    title: String,
+    downloaded: DownloadItem?,
+    onPlayDownloaded: (DownloadItem) -> Unit,
+    onDownload: (SavedStream) -> Unit,
+    onDismiss: () -> Unit,
+    onPick: (SavedStream) -> Unit,
+) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val torrentsReady = LocalContext.current.graph.torrents.available
     var filter by remember { mutableStateOf(QualityFilter.All) }
@@ -100,7 +109,10 @@ fun StreamsSheet(ui: StreamsUi, title: String, onDismiss: () -> Unit, onPick: (S
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.navigationBarsPadding(),
             ) {
-                val saved = ui.resume?.lastStream
+                if (downloaded?.localFile != null && filter == QualityFilter.All) {
+                    item(key = "downloaded") { DownloadedCard(onClick = { onPlayDownloaded(downloaded) }) }
+                }
+                val saved = ui.resume?.lastStream?.takeIf { !it.url.orEmpty().startsWith("file://") }
                 if (saved != null && filter == QualityFilter.All) {
                     item(key = "resume") {
                         ResumeCard(saved, ui.resume?.positionMs ?: 0L, torrentsReady, onClick = { onPick(saved) })
@@ -116,7 +128,11 @@ fun StreamsSheet(ui: StreamsUi, title: String, onDismiss: () -> Unit, onPick: (S
                     if (group is AddonStreams.Loaded) {
                         val visible = group.streams.filter { filter.match(it.quality) }
                         items(visible, key = { it.key }, contentType = { "stream" }) { option ->
-                            StreamCard(option, enabled = option.kind == StreamKind.Direct || (option.kind == StreamKind.Torrent && torrentsReady), onClick = { onPick(option.saved) })
+                            val enabled = option.kind == StreamKind.Direct || (option.kind == StreamKind.Torrent && torrentsReady)
+                            StreamCard(
+                                option, enabled = enabled, onClick = { onPick(option.saved) },
+                                onDownload = if (enabled) ({ onDownload(option.saved) }) else null,
+                            )
                         }
                     }
                 }
@@ -168,6 +184,25 @@ private fun ResumeCard(saved: SavedStream, positionMs: Long, torrentsReady: Bool
 }
 
 @Composable
+private fun DownloadedCard(onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+            .background(Brush.horizontalGradient(listOf(Color(0xFF0C3A52), Color(0xFF102536))))
+            .border(1.dp, HarborColors.Accent.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(HIcons.DownloadDone, null, tint = HarborColors.Accent, modifier = Modifier.size(24.dp))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text("Ver la descarga", style = MaterialTheme.typography.titleSmall)
+            Text("Está en el teléfono: no gasta datos ni necesita internet", style = MaterialTheme.typography.bodySmall, color = HarborColors.TextDim)
+        }
+    }
+}
+
+@Composable
 private fun QualityBadge(quality: Quality) {
     val (bg, fg) = when (quality) {
         Quality.UHD -> Brush.linearGradient(listOf(Color(0xFFF59E0B), Color(0xFFFDE68A))) to Color(0xFF231400)
@@ -184,7 +219,7 @@ private fun QualityBadge(quality: Quality) {
 }
 
 @Composable
-private fun StreamCard(option: StreamOption, enabled: Boolean, onClick: () -> Unit) {
+private fun StreamCard(option: StreamOption, enabled: Boolean, onClick: () -> Unit, onDownload: (() -> Unit)?) {
     val source = remember { MutableInteractionSource() }
     Row(
         Modifier
@@ -230,6 +265,13 @@ private fun StreamCard(option: StreamOption, enabled: Boolean, onClick: () -> Un
                 ).joinToString("  ·  ")
                 Text(meta, style = MaterialTheme.typography.bodySmall, color = HarborColors.TextDim, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+        }
+        if (onDownload != null) {
+            Icon(
+                HIcons.Download, "Descargar",
+                tint = HarborColors.TextDim,
+                modifier = Modifier.padding(start = 4.dp).size(40.dp).clip(RoundedCornerShape(20.dp)).clickable(onClick = onDownload).padding(9.dp),
+            )
         }
     }
 }

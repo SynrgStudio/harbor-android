@@ -24,8 +24,12 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.intOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.IOException
+import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Debrid-cached first, CAM last, then quality, then seeders. Addons without seed counts keep
@@ -43,6 +47,9 @@ sealed interface AddonStreams {
     data class Failed(override val addon: AddonEntry, val message: String) : AddonStreams
 }
 
+/** One video of a series as a metadata addon lists it. */
+data class SeriesVideo(val id: String, val season: Int?, val episode: Int?, val released: Long?)
+
 class AddonRepository(
     private val http: OkHttpClient,
     private val json: Json,
@@ -50,6 +57,41 @@ class AddonRepository(
 ) {
     companion object {
         const val OPENSUBTITLES = "https://opensubtitles-v3.strem.io/manifest.json"
+        private const val CINEMETA = "https://v3-cinemeta.strem.io"
+    }
+
+    private val seriesCache = ConcurrentHashMap<String, Pair<Long, List<SeriesVideo>>>()
+
+    /**
+     * A series' videos in the order Stremio keeps its "watched" marks: season, episode, release date.
+     * Like Stremio, from the first addon in the account's order with metadata for it (usually Cinemeta).
+     */
+    suspend fun seriesVideos(imdb: String): List<SeriesVideo> {
+        seriesCache[imdb]?.takeIf { System.currentTimeMillis() - it.first < 30 * 60_000 }?.let { return it.second }
+        val bases = settings.current.addons.filter { it.supports("meta", "series", imdb) }.map { it.baseUrl } + CINEMETA
+        for (base in bases.distinct()) {
+            val videos = runCatching {
+                val meta = json.parseToJsonElement(getText("$base/meta/series/$imdb.json")).jsonObject["meta"]?.jsonObject
+                meta?.get("videos")?.jsonArray.orEmpty().mapNotNull { v ->
+                    val o = v as? JsonObject ?: return@mapNotNull null
+                    SeriesVideo(
+                        id = o["id"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null,
+                        season = o["season"]?.jsonPrimitive?.intOrNull,
+                        episode = o["episode"]?.jsonPrimitive?.intOrNull,
+                        released = o["released"]?.jsonPrimitive?.contentOrNull?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() },
+                    )
+                }
+            }.getOrNull()
+            if (videos.isNullOrEmpty()) continue
+            val sorted = videos.sortedWith(
+                compareBy<SeriesVideo> { it.season ?: Int.MIN_VALUE }
+                    .thenBy { it.episode ?: Int.MIN_VALUE }
+                    .thenBy { it.released ?: Long.MIN_VALUE },
+            )
+            seriesCache[imdb] = System.currentTimeMillis() to sorted
+            return sorted
+        }
+        throw IOException("No se encontró la lista de episodios de $imdb")
     }
 
     /** Accepts https://…/manifest.json, stremio://…/manifest.json or a bare addon base URL. */

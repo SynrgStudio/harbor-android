@@ -23,6 +23,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -43,6 +44,7 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 class StremioSync(
     private val account: StremioAccount,
+    private val addons: AddonRepository,
     private val settings: SettingsRepository,
     private val progress: ProgressRepository,
     private val watchlist: WatchlistRepository,
@@ -51,7 +53,12 @@ class StremioSync(
 ) {
     data class Result(val continueWatching: Int, val added: Int)
 
+    /** What the account says was watched: a movie, or a series' video ids ("tt…:season:episode"). */
+    data class RemoteWatched(val movie: Boolean, val videos: Set<String>)
+
     private val mutex = Mutex()
+    /** Watched marks read, change and write a whole library item: one at a time. */
+    private val marksMutex = Mutex()
     private val pendingProgress = ConcurrentHashMap<String, Job>()
     private val _syncing = MutableStateFlow(false)
     val syncing: StateFlow<Boolean> = _syncing
@@ -212,6 +219,83 @@ class StremioSync(
         }
     }
 
+    suspend fun remoteWatched(type: MediaType, imdb: String): RemoteWatched? {
+        if (!signedIn) return null
+        val state = account.libraryGet(listOf(imdb)).firstOrNull()?.get("state") as? JsonObject
+            ?: return RemoteWatched(false, emptySet())
+        if (type == MediaType.Movie) return RemoteWatched(state.long("timesWatched") > 0 || state.long("flaggedWatched") > 0, emptySet())
+        val serialized = state.string("watched") ?: return RemoteWatched(false, emptySet())
+        return RemoteWatched(false, WatchedBitfield.parse(serialized, addons.seriesVideos(imdb).map { it.id }).watched)
+    }
+
+    /**
+     * Marks a movie, or some videos of a series ([videoIds] like "tt…:1:2"), watched or not in the
+     * account, the way Stremio does: a movie counts as watched and leaves "continue watching"; a
+     * series sets its bits and, with [advance], moves "continue watching" past a now watched episode.
+     */
+    fun setWatched(type: MediaType, imdb: String, title: String, poster: String?, videoIds: List<String>, watched: Boolean, advance: Boolean = true) {
+        if (!signedIn) return
+        scope.launch {
+            runCatching { marksMutex.withLock { applyWatched(type, imdb, title, poster, videoIds, watched, advance) } }
+        }
+    }
+
+    /** Stremio's per-title "notify me about new videos" (the bell), kept in step with Harbor's. */
+    fun setNotify(imdb: String, notify: Boolean) {
+        if (!signedIn) return
+        scope.launch {
+            runCatching {
+                marksMutex.withLock {
+                    val existing = account.libraryGet(listOf(imdb)).firstOrNull() ?: return@withLock
+                    val state = existing["state"] as? JsonObject ?: return@withLock
+                    val now = JsonPrimitive(iso(System.currentTimeMillis()))
+                    account.libraryPut(listOf(JsonObject(existing + mapOf("state" to JsonObject(state + ("noNotif" to JsonPrimitive(!notify))), "_mtime" to now))))
+                }
+            }
+        }
+    }
+
+    private suspend fun applyWatched(type: MediaType, imdb: String, title: String, poster: String?, videoIds: List<String>, watched: Boolean, advance: Boolean) {
+        val base = account.libraryGet(listOf(imdb)).firstOrNull() ?: newItem(imdb, type, title, poster)
+        val state = base["state"] as? JsonObject ?: JsonObject(emptyMap())
+        val now = iso(System.currentTimeMillis())
+        val changes = mutableMapOf<String, JsonElement>()
+        if (type == MediaType.Movie) {
+            val already = state.long("timesWatched") > 0 || state.long("flaggedWatched") > 0
+            if (watched) {
+                if (!already) changes["timesWatched"] = JsonPrimitive(state.long("timesWatched") + 1)
+                changes["flaggedWatched"] = JsonPrimitive(1)
+                changes["lastWatched"] = JsonPrimitive(now)
+                if (advance) changes["timeOffset"] = JsonPrimitive(0)
+            } else {
+                changes["timesWatched"] = JsonPrimitive(0)
+                changes["flaggedWatched"] = JsonPrimitive(0)
+            }
+        } else {
+            val videos = addons.seriesVideos(imdb)
+            val bits = WatchedBitfield.parse(state.string("watched"), videos.map { it.id })
+            videoIds.forEach { bits[it] = watched }
+            changes["watched"] = JsonPrimitive(bits.serialize())
+            val current = state.string("video_id")
+            if (watched && advance && current != null && current in videoIds) {
+                val nowMs = System.currentTimeMillis()
+                val next = videos.dropWhile { it.id != current }.drop(1)
+                    .firstOrNull { it.season != 0 && !bits[it.id] && (it.released ?: 0L) <= nowMs }
+                if (next != null) {
+                    // Like Stremio: "continue watching" moves on to the next episode, from the start.
+                    changes["video_id"] = JsonPrimitive(next.id)
+                    changes["timeOffset"] = JsonPrimitive(1)
+                    changes["overallTimeWatched"] = JsonPrimitive(state.long("overallTimeWatched") + state.long("timeWatched"))
+                    changes["timeWatched"] = JsonPrimitive(0)
+                    changes["flaggedWatched"] = JsonPrimitive(0)
+                } else {
+                    changes["timeOffset"] = JsonPrimitive(0)
+                }
+            }
+        }
+        account.libraryPut(listOf(JsonObject(base + mapOf("state" to JsonObject(state + changes), "_mtime" to JsonPrimitive(now)))))
+    }
+
     private suspend fun imdbFor(item: MediaItem): String? = runCatching { meta.details(item.type, item.id).imdbId }.getOrNull()
 
     private suspend fun pushProgress(entry: ProgressEntry, imdb: String) {
@@ -223,6 +307,12 @@ class StremioSync(
         val prevOffset = state.long("timeOffset")
         val delta = if (sameVideo) (entry.positionMs - prevOffset).coerceAtLeast(0) else entry.positionMs
         val justFinished = entry.finished && (prevOffset > 0 || !sameVideo)
+        // A finished episode also gets its "watched" bit, as Stremio does when an episode ends.
+        val watchedBits = if (entry.finished && entry.season != null && entry.episode != null) {
+            runCatching {
+                WatchedBitfield.parse(state.string("watched"), addons.seriesVideos(imdb).map { it.id }).also { it[videoId] = true }.serialize()
+            }.getOrNull()
+        } else null
         val now = iso(System.currentTimeMillis())
         val newState = JsonObject(
             state + mapOf(
@@ -236,7 +326,9 @@ class StremioSync(
             ) + if (justFinished) {
                 mapOf("timesWatched" to JsonPrimitive(state.long("timesWatched") + 1)) +
                     if (entry.type == MediaType.Movie) mapOf("flaggedWatched" to JsonPrimitive(1)) else emptyMap()
-            } else emptyMap(),
+            } else {
+                emptyMap()
+            } + (watchedBits?.let { mapOf("watched" to JsonPrimitive(it)) } ?: emptyMap()),
         )
         account.libraryPut(listOf(JsonObject(base + mapOf("state" to newState, "_mtime" to JsonPrimitive(now)))))
     }

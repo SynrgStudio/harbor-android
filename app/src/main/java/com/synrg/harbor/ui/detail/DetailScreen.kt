@@ -1,5 +1,9 @@
 package com.synrg.harbor.ui.detail
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -50,6 +54,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -61,6 +66,10 @@ import com.synrg.harbor.data.Img
 import com.synrg.harbor.data.MediaItem
 import com.synrg.harbor.data.MediaType
 import com.synrg.harbor.data.ProgressEntry
+import android.widget.Toast
+import com.synrg.harbor.downloads.DownloadItem
+import com.synrg.harbor.downloads.DownloadStatus
+import com.synrg.harbor.episodes.EpisodeAlerts
 import com.synrg.harbor.player.PlaybackRequest
 import com.synrg.harbor.ui.components.GlassButton
 import com.synrg.harbor.ui.components.MessageBlock
@@ -83,6 +92,11 @@ fun DetailScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val progress by vm.progress.collectAsStateWithLifecycle()
     val inWatchlist by vm.inWatchlist.collectAsStateWithLifecycle()
+    val watched by vm.watched.collectAsStateWithLifecycle()
+    val alerts by vm.alerts.collectAsStateWithLifecycle()
+    val downloads by vm.downloads.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     val streams by vm.streams.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     LaunchedEffect(vm) { vm.playRequests.collect { onPlay(it) } }
@@ -95,19 +109,37 @@ fun DetailScreen(
                     Header(details, state.partial, listState.firstVisibleItemIndex == 0, { listState.firstVisibleItemScrollOffset })
                 }
                 item(key = "actions", contentType = "actions") {
+                    val movieWatched = ProgressEntry.key(MediaType.Movie, vm.id) in watched
                     Actions(
                         details, vm.mainButtonLabel(progress), inWatchlist,
                         onPlay = vm::playMain,
                         onSources = if (vm.resumesDirectly(progress)) vm::chooseSource else null,
                         onToggleList = vm::toggleWatchlist,
+                        movieWatched = movieWatched.takeIf { details.item.type == MediaType.Movie && !state.partial },
+                        onToggleWatched = { vm.setMovieWatched(!movieWatched) },
+                        downloadNote = downloads[ProgressEntry.key(MediaType.Movie, vm.id)]?.takeIf { details.item.type == MediaType.Movie }?.let(::downloadLabel),
+                        alerts = alerts,
+                        onToggleAlerts = {
+                            if (alerts == false && Build.VERSION.SDK_INT >= 33 && !EpisodeAlerts.permitted(context)) {
+                                askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                            vm.toggleAlerts()
+                        },
                     )
                 }
                 item(key = "overview", contentType = "overview") { Overview(details) }
                 if (details.item.type == MediaType.Tv && details.seasons.isNotEmpty()) {
-                    item(key = "seasons", contentType = "seasons") {
-                        SeasonTabs(details, state.season, vm::selectSeason)
-                    }
                     val episodes = state.episodes
+                    item(key = "seasons", contentType = "seasons") {
+                        val released = episodes.orEmpty().filter { it.released }
+                        val seasonWatched = released.isNotEmpty() &&
+                            released.all { ProgressEntry.key(MediaType.Tv, vm.id, it.season, it.number) in watched }
+                        SeasonTabs(
+                            details, state.season, vm::selectSeason,
+                            seasonWatched = seasonWatched.takeIf { released.isNotEmpty() },
+                            onToggleSeason = { vm.setEpisodesWatched(released, !seasonWatched) },
+                        )
+                    }
                     if (episodes == null) {
                         item(key = "episodes-loading") {
                             Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
@@ -116,7 +148,13 @@ fun DetailScreen(
                         }
                     } else {
                         items(episodes, key = { "ep-${it.season}-${it.number}" }, contentType = { "episode" }) { ep ->
-                            EpisodeRow(ep, progress[ProgressEntry.key(MediaType.Tv, vm.id, ep.season, ep.number)], onClick = { vm.openEpisode(ep) })
+                            val key = ProgressEntry.key(MediaType.Tv, vm.id, ep.season, ep.number)
+                            val epWatched = key in watched
+                            EpisodeRow(
+                                ep, progress[key], epWatched, downloads[key]?.let(::downloadLabel),
+                                onClick = { vm.openEpisode(ep) },
+                                onToggleWatched = { vm.setEpisodesWatched(listOf(ep), !epWatched) },
+                            )
                         }
                     }
                 }
@@ -142,9 +180,19 @@ fun DetailScreen(
 
     val ui = streams
     if (ui != null) {
+        val downloaded = downloads[ProgressEntry.key(vm.type, vm.id, ui.target.season, ui.target.episode)]
         StreamsSheet(
             ui = ui,
             title = state.details?.item?.title.orEmpty(),
+            downloaded = downloaded,
+            onPlayDownloaded = { item ->
+                vm.closeStreams()
+                onPlay(vm.playDownloaded(item))
+            },
+            onDownload = { saved ->
+                vm.download(ui.target, saved)
+                Toast.makeText(context, "Descargando… lo ves en Mi lista → Descargas", Toast.LENGTH_SHORT).show()
+            },
             onDismiss = vm::closeStreams,
             onPick = { saved ->
                 vm.playbackRequest(ui.target, saved)?.let {
@@ -246,6 +294,11 @@ private fun Actions(
     onPlay: () -> Unit,
     onSources: (() -> Unit)?,
     onToggleList: () -> Unit,
+    movieWatched: Boolean?,
+    onToggleWatched: () -> Unit,
+    downloadNote: String?,
+    alerts: Boolean?,
+    onToggleAlerts: () -> Unit,
 ) {
     Column(Modifier.padding(horizontal = 20.dp).padding(top = 18.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -254,12 +307,34 @@ private fun Actions(
             if (onSources != null) GlassButton("Fuentes", null, onSources)
         }
         Spacer(Modifier.height(10.dp))
-        GlassButton(
-            if (inWatchlist) "En mi lista" else "Agregar a mi lista",
-            if (inWatchlist) HIcons.Check else HIcons.Add,
-            onToggleList,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            GlassButton(
+                if (inWatchlist) "En mi lista" else "Agregar a mi lista",
+                if (inWatchlist) HIcons.Check else HIcons.Add,
+                onToggleList,
+                modifier = Modifier.weight(1f),
+            )
+            if (movieWatched != null) {
+                GlassButton(if (movieWatched) "Vista" else "Marcar vista", if (movieWatched) HIcons.CheckCircle else HIcons.Visibility, onToggleWatched)
+            }
+            if (alerts != null) {
+                RoundIconButton(
+                    if (alerts) HIcons.Bell else HIcons.BellOff,
+                    if (alerts) "No avisarme de episodios nuevos" else "Avisarme de episodios nuevos",
+                    onToggleAlerts,
+                    size = 46.dp,
+                    tint = if (alerts) HarborColors.Accent else Color.White,
+                )
+            }
+        }
+        if (downloadNote != null) {
+            Spacer(Modifier.height(10.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                Icon(HIcons.DownloadDone, null, tint = HarborColors.Accent, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(downloadNote, style = MaterialTheme.typography.labelMedium, color = HarborColors.Accent)
+            }
+        }
         if (details.genres.isNotEmpty()) {
             Spacer(Modifier.height(16.dp))
             Text(
@@ -295,11 +370,38 @@ private fun Overview(details: Details) {
 }
 
 @Composable
-private fun SeasonTabs(details: Details, selected: Int?, onSelect: (Int) -> Unit) {
+private fun SeasonTabs(details: Details, selected: Int?, onSelect: (Int) -> Unit, seasonWatched: Boolean?, onToggleSeason: () -> Unit) {
     Column(Modifier.padding(top = 26.dp, bottom = 6.dp)) {
-        SectionTitle("Episodios")
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SectionTitle("Episodios", Modifier.weight(1f))
+            if (seasonWatched != null) {
+                Row(
+                    Modifier.padding(end = 12.dp).clip(RoundedCornerShape(16.dp)).clickable(onClick = onToggleSeason)
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        if (seasonWatched) HIcons.CheckCircle else HIcons.Visibility, null,
+                        tint = if (seasonWatched) HarborColors.Accent else HarborColors.TextDim,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        if (seasonWatched) "Temporada vista" else "Marcar temporada",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (seasonWatched) HarborColors.Accent else HarborColors.TextDim,
+                    )
+                }
+            }
+        }
         Spacer(Modifier.height(10.dp))
-        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // The selected season in view (a long series opened at its latest season, from a new-episode alert).
+        val tabsState = rememberLazyListState()
+        LaunchedEffect(selected) {
+            val index = details.seasons.indexOfFirst { it.number == selected }
+            if (index > 0) tabsState.animateScrollToItem(index)
+        }
+        LazyRow(state = tabsState, contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(details.seasons, key = { it.number }) { season ->
                 val active = season.number == selected
                 Text(
@@ -318,7 +420,7 @@ private fun SeasonTabs(details: Details, selected: Int?, onSelect: (Int) -> Unit
 }
 
 @Composable
-private fun EpisodeRow(ep: Episode, progress: ProgressEntry?, onClick: () -> Unit) {
+private fun EpisodeRow(ep: Episode, progress: ProgressEntry?, watched: Boolean, download: String?, onClick: () -> Unit, onToggleWatched: () -> Unit) {
     val source = remember { MutableInteractionSource() }
     Row(
         Modifier
@@ -339,12 +441,11 @@ private fun EpisodeRow(ep: Episode, progress: ProgressEntry?, onClick: () -> Uni
                 Modifier.align(Alignment.Center).size(30.dp).clip(CircleShape).background(Color(0x66000000)),
                 contentAlignment = Alignment.Center,
             ) { Icon(HIcons.Play, null, tint = Color.White, modifier = Modifier.size(16.dp)) }
-            if (progress != null && progress.fraction > 0.01f) {
+            if (watched || (progress != null && progress.fraction > 0.01f)) {
+                val fraction = if (watched) 1f else progress?.fraction ?: 0f
                 Box(
                     Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp).background(Color(0x40FFFFFF))
-                        .drawBehind {
-                            drawRect(HarborColors.Accent, size = size.copy(width = size.width * if (progress.finished) 1f else progress.fraction))
-                        },
+                        .drawBehind { drawRect(HarborColors.Accent, size = size.copy(width = size.width * fraction)) },
                 )
             }
         }
@@ -354,17 +455,49 @@ private fun EpisodeRow(ep: Episode, progress: ProgressEntry?, onClick: () -> Uni
             val meta = listOfNotNull(
                 ep.runtime?.takeIf { it > 0 }?.let { "$it min" },
                 if (!ep.released) ep.airDate?.let { "Sale el $it" } else null,
-                if (progress?.finished == true) "Visto" else null,
+                if (watched) "Visto" else null,
+                download,
             ).joinToString("  ·  ")
             if (meta.isNotEmpty()) {
-                Text(meta, style = MaterialTheme.typography.bodySmall, color = if (progress?.finished == true) HarborColors.Accent else HarborColors.TextFaint)
+                Text(meta, style = MaterialTheme.typography.bodySmall, color = if (watched) HarborColors.Accent else HarborColors.TextFaint)
             }
             if (ep.overview.isNotBlank()) {
                 Spacer(Modifier.height(2.dp))
                 Text(ep.overview, style = MaterialTheme.typography.bodySmall, color = HarborColors.TextDim, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
+        if (ep.released) {
+            // The watched check: tap to mark or unmark, like the eye in Stremio.
+            Box(
+                Modifier.padding(start = 4.dp).size(44.dp).clip(CircleShape).clickable(onClick = onToggleWatched),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier.size(26.dp).clip(CircleShape)
+                        .background(if (watched) HarborColors.Accent else Color.Transparent)
+                        .border(1.5.dp, if (watched) HarborColors.Accent else Color(0x59FFFFFF), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        HIcons.Check,
+                        if (watched) "Marcar como no visto" else "Marcar como visto",
+                        tint = if (watched) HarborColors.OnAccent else HarborColors.TextFaint,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+        }
     }
+}
+
+/** "Descargado", "Descargando 45%", "Descarga en pausa"… */
+private fun downloadLabel(item: DownloadItem): String = when (item.status) {
+    DownloadStatus.Done -> if (item.type == MediaType.Movie) "Descargada · se ve sin internet" else "Descargado"
+    DownloadStatus.Downloading -> "Descargando ${(item.fraction * 100).toInt()}%"
+    DownloadStatus.Queued -> "Descarga en espera"
+    DownloadStatus.WaitingWifi -> "Descarga esperando Wi-Fi"
+    DownloadStatus.Paused -> "Descarga en pausa"
+    DownloadStatus.Failed -> "Descarga fallida"
 }
 
 @Composable

@@ -20,7 +20,13 @@ data class SavedStream(
     val addonName: String? = null,
     val label: String? = null,
     val bingeGroup: String? = null,
-)
+) {
+    /** Can play right now: a link (a downloaded file only while it exists), or a torrent with the engine. */
+    fun playable(torrents: Boolean): Boolean {
+        val link = url ?: return infoHash != null && torrents
+        return !link.startsWith("file://") || java.io.File(link.removePrefix("file://")).isFile
+    }
+}
 
 @Immutable
 @Serializable
@@ -62,7 +68,12 @@ data class TrackPref(
     val subtitle: String? = null,
     /** The exact subtitle in use, so coming back to the same video brings back that same one. */
     val subtitleChoice: SubtitleChoice? = null,
+    /** Subtitle sync set by hand; it belongs to one video (another file needs its own). */
+    val subtitleDelay: SubtitleShift? = null,
 )
+
+@Serializable
+data class SubtitleShift(val video: String, val ms: Long)
 
 /**
  * A subtitle as picked: an internet one by its URL, or one of the file's tracks by language and
@@ -105,6 +116,8 @@ class ProgressRepository(private val store: JsonStore<ProgressData>) {
 
     fun get(key: String): ProgressEntry? = store.value.entries[key]
 
+    val entries: Flow<Map<String, ProgressEntry>> = store.state.map { it.entries }.distinctUntilChanged()
+
     val all: Collection<ProgressEntry> get() = store.value.entries.values
 
     fun save(entry: ProgressEntry) = store.update { it.copy(entries = it.entries + (entry.key to entry)) }
@@ -125,6 +138,8 @@ class ProgressRepository(private val store: JsonStore<ProgressData>) {
     fun remove(type: MediaType, id: Int) = store.update { data ->
         data.copy(entries = data.entries.filterValues { !(it.type == type && it.tmdbId == id) })
     }
+
+    fun removeKey(key: String) = store.update { it.copy(entries = it.entries - key) }
 
     fun flush() = store.flushNow()
 

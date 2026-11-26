@@ -1,5 +1,10 @@
 package com.synrg.harbor.ui.settings
 
+import android.Manifest
+import android.content.Intent
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -45,9 +50,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.synrg.harbor.BuildConfig
+import com.synrg.harbor.episodes.EpisodeAlerts
+import com.synrg.harbor.episodes.EpisodeCheckJob
 import com.synrg.harbor.data.AddonEntry
 import com.synrg.harbor.graph
 import com.synrg.harbor.ui.components.GlassButton
@@ -176,6 +184,43 @@ fun SettingsScreen(bottomPadding: Dp) {
             }
             Spacer(Modifier.height(14.dp))
             ToggleRow("Siguiente episodio automático", settings.autoplayNext) { on -> graph.settings.update { it.copy(autoplayNext = on) } }
+            ToggleRow("Preguntar antes de usar datos móviles", settings.askOnMobileData) { on -> graph.settings.update { it.copy(askOnMobileData = on) } }
+        }
+
+        // Downloads
+        Section("Descargas", "Para ver sin internet: tocá ⬇ en una fuente. Las ves en Mi lista → Descargas.") {
+            ToggleRow("Descargar solo con Wi-Fi", settings.downloadWifiOnly) { on -> graph.settings.update { it.copy(downloadWifiOnly = on) } }
+        }
+
+        // New-episode alerts
+        Section("Avisos", "Cuando sale un episodio de una serie de tu lista o que estás viendo. También aparecen en Continuar.") {
+            var permitted by remember { mutableStateOf(EpisodeAlerts.permitted(context)) }
+            LifecycleResumeEffect(Unit) {
+                permitted = EpisodeAlerts.permitted(context)
+                onPauseOrDispose { }
+            }
+            fun openSystemSettings() = context.startActivity(
+                Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName),
+            )
+            val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+                permitted = EpisodeAlerts.permitted(context)
+                if (!granted) openSystemSettings() // denied twice: only Android's screen can turn it on
+            }
+            fun requestPermission() {
+                if (Build.VERSION.SDK_INT >= 33) ask.launch(Manifest.permission.POST_NOTIFICATIONS) else openSystemSettings()
+            }
+            ToggleRow("Avisarme de episodios nuevos", settings.episodeAlerts) { on ->
+                graph.settings.update { it.copy(episodeAlerts = on) }
+                if (on) graph.episodes.seed()
+                EpisodeCheckJob.schedule(context, on)
+                if (on && !permitted) requestPermission()
+            }
+            if (settings.episodeAlerts && !permitted) {
+                Spacer(Modifier.height(8.dp))
+                Text("Android tiene bloqueados los avisos de Harbor.", style = MaterialTheme.typography.bodySmall, color = HarborColors.Warn)
+                Spacer(Modifier.height(8.dp))
+                GlassButton("Permitir avisos", HIcons.Bell, onClick = ::requestPermission, modifier = Modifier.fillMaxWidth())
+            }
         }
 
         // Metadata

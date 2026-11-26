@@ -18,6 +18,7 @@ baselineprofile = "1.4.1"
 benchmarkMacro = "1.4.1"
 uiautomator = "2.3.0"
 androidxJunit = "1.2.1"
+junit = "4.13.2"
 
 [libraries]
 androidx-core = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -45,6 +46,7 @@ haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
 androidx-benchmark-macro = { module = "androidx.benchmark:benchmark-macro-junit4", version.ref = "benchmarkMacro" }
 androidx-uiautomator = { module = "androidx.test.uiautomator:uiautomator", version.ref = "uiautomator" }
 androidx-junit = { module = "androidx.test.ext:junit", version.ref = "androidxJunit" }
+junit = { module = "junit:junit", version.ref = "junit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

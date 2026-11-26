@@ -23,6 +23,8 @@ data class PlaybackRequest(
     val progressKey: String get() = ProgressEntry.key(type, tmdbId, season, episode)
     val stremioType: String get() = type.stremio
     val stremioId: String? get() = imdbId?.let { if (season != null && episode != null) "$it:$season:$episode" else it }
+    /** A downloaded file: plays without internet. */
+    val isLocal: Boolean get() = stream.url?.startsWith("file:") == true
     companion object {
         /** Plays [entry] again with the source it was last played with, from where it was left. */
         fun resume(entry: ProgressEntry, stream: SavedStream) = PlaybackRequest(

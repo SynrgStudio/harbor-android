@@ -23,18 +23,37 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.synrg.harbor.data.MediaItem
+import com.synrg.harbor.downloads.DownloadStatus
 import com.synrg.harbor.graph
+import com.synrg.harbor.ui.components.GlassButton
+import com.synrg.harbor.ui.theme.HIcons
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Alignment
 import com.synrg.harbor.ui.components.MessageBlock
 import com.synrg.harbor.ui.components.PosterCard
 import com.synrg.harbor.ui.theme.HarborColors
 
 @Composable
-fun LibraryScreen(bottomPadding: Dp, onOpen: (MediaItem) -> Unit) {
+fun LibraryScreen(bottomPadding: Dp, onOpen: (MediaItem) -> Unit, onDownloads: () -> Unit) {
     val graph = LocalContext.current.graph
     val items by remember { graph.watchlist.items }.collectAsState(initial = emptyList())
+    val downloads by graph.downloads.items.collectAsState()
 
     Column(Modifier.fillMaxSize().background(HarborColors.Bg).statusBarsPadding()) {
-        Text("Mi lista", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(start = 20.dp, top = 12.dp))
+        Row(Modifier.fillMaxWidth().padding(start = 20.dp, top = 12.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Mi lista", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+            val active = downloads.items.count { it.active }
+            val done = downloads.items.count { it.status == DownloadStatus.Done }
+            GlassButton(
+                when {
+                    active > 0 -> "Descargas · $active"
+                    done > 0 -> "Descargas · $done"
+                    else -> "Descargas"
+                },
+                HIcons.Download,
+                onDownloads,
+            )
+        }
         if (items.isEmpty()) {
             Box(Modifier.fillMaxSize()) {
                 MessageBlock(

@@ -9,9 +9,13 @@ import com.synrg.harbor.data.Episode
 import com.synrg.harbor.data.MediaType
 import com.synrg.harbor.data.ProgressEntry
 import com.synrg.harbor.data.SavedStream
+import com.synrg.harbor.downloads.DownloadItem
 import com.synrg.harbor.player.PlaybackRequest
 import com.synrg.harbor.stremio.AddonStreams
+import com.synrg.harbor.stremio.MarkTitle
+import com.synrg.harbor.stremio.MarkVideo
 import com.synrg.harbor.stremio.StreamOption
+import com.synrg.harbor.stremio.StremioSync
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -19,6 +23,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -56,6 +61,7 @@ class DetailViewModel(
     val type: MediaType,
     val id: Int,
     private var autoplay: Boolean,
+    private val initialSeason: Int? = null,
 ) : ViewModel() {
     private val _state = MutableStateFlow(
         graph.previews["${type.tmdb}:$id"]?.let { preview ->
@@ -78,8 +84,56 @@ class DetailViewModel(
         .map { list -> list.associateBy { it.key } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
+    /** What the Stremio account says was watched (null until it answers, or when signed out). */
+    private val remoteWatched = MutableStateFlow<StremioSync.RemoteWatched?>(null)
+
+    /** Progress keys that count as watched: finished here, or marked in the Stremio account. */
+    val watched: StateFlow<Set<String>> = combine(progress, remoteWatched) { local, remote ->
+        buildSet {
+            local.values.filter { it.finished }.forEach { add(it.key) }
+            if (remote?.movie == true) add(ProgressEntry.key(type, id))
+            remote?.videos?.forEach { videoId ->
+                val parts = videoId.split(':')
+                val season = parts.getOrNull(parts.size - 2)?.toIntOrNull()
+                val episode = parts.lastOrNull()?.toIntOrNull()
+                if (parts.size >= 3 && season != null && episode != null) add(ProgressEntry.key(MediaType.Tv, id, season, episode))
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    /** This title's downloads, by progress key. */
+    val downloads: StateFlow<Map<String, DownloadItem>> = graph.downloads.items
+        .map { d -> d.items.filter { it.type == type && it.tmdbId == id }.associateBy { it.id } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    fun download(target: StreamTarget, saved: SavedStream) {
+        val details = _state.value.details ?: return
+        graph.downloads.add(
+            DownloadItem(
+                id = ProgressEntry.key(type, id, target.season, target.episode),
+                type = type, tmdbId = id, imdbId = details.imdbId, season = target.season, episode = target.episode,
+                title = details.item.title, episodeTitle = target.episodeTitle,
+                poster = details.item.posterPath, backdrop = details.item.backdropPath, still = target.still,
+                stream = saved,
+            ),
+        )
+    }
+
+    fun playDownloaded(item: DownloadItem): PlaybackRequest =
+        item.playback(progress.value[item.id]?.takeIf { !it.finished && it.positionMs > 30_000 }?.positionMs ?: 0L)
+
     val inWatchlist: StateFlow<Boolean> = graph.watchlist.contains(type, id)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /** For a followed series (in the list, or watched): whether its new episodes notify. Null otherwise. */
+    val alerts: StateFlow<Boolean?> = combine(graph.episodes.state, inWatchlist, progress) { calendar, inList, watched ->
+        if (type == MediaType.Tv && (inList || watched.isNotEmpty())) id !in calendar.muted else null
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun toggleAlerts() {
+        val on = alerts.value ?: return
+        graph.episodes.setMuted(id, _state.value.details?.imdbId, muted = on)
+    }
 
     private val _playRequests = Channel<PlaybackRequest>(Channel.BUFFERED)
     /** Playback that starts without the sources list (resuming with the source used last time). */
@@ -99,9 +153,11 @@ class DetailViewModel(
                 .onSuccess { details ->
                     _state.update { it.copy(details = details, partial = false) }
                     if (details.recommendations.isEmpty()) loadRecommendations(details)
+                    loadRemoteWatched(details)
                     if (type == MediaType.Tv) {
                         val latest = progress.value.values.maxByOrNull { it.updatedAt }
-                        val season = latest?.season?.takeIf { s -> details.seasons.any { it.number == s } }
+                        val season = initialSeason?.takeIf { s -> details.seasons.any { it.number == s } }
+                            ?: latest?.season?.takeIf { s -> details.seasons.any { it.number == s } }
                             ?: details.seasons.firstOrNull()?.number
                         if (season != null) selectSeason(season)
                     }
@@ -120,6 +176,45 @@ class DetailViewModel(
         if (recs.isNotEmpty()) {
             _state.update { s -> s.copy(details = s.details?.copy(recommendations = recs)) }
         }
+    }
+
+    private fun loadRemoteWatched(details: Details) {
+        val imdb = details.imdbId ?: return
+        viewModelScope.launch {
+            val remote = runCatching { graph.sync.remoteWatched(type, imdb) }.getOrNull() ?: return@launch
+            remoteWatched.value = remote
+            // Finished here before marks reached the account (or while signed out): fill them in there.
+            val finished = progress.value.values.filter { it.finished }
+            val missing = if (type == MediaType.Movie) {
+                listOf(imdb).takeIf { finished.isNotEmpty() && !remote.movie }.orEmpty()
+            } else {
+                finished.filter { it.season != null && it.episode != null }.map { "$imdb:${it.season}:${it.episode}" }.filter { it !in remote.videos }
+            }
+            if (missing.isNotEmpty()) {
+                graph.sync.setWatched(type, imdb, details.item.title, details.item.posterPath, missing, watched = true, advance = false)
+            }
+        }
+    }
+
+    private fun markTitle(details: Details) = MarkTitle(
+        type = type, tmdbId = id, imdbId = details.imdbId, title = details.item.title,
+        poster = details.item.posterPath, backdrop = details.item.backdropPath, runtimeMin = details.runtime,
+    )
+
+    /** "Visto" on episodes (one, or a whole season): here and in the Stremio account. */
+    fun setEpisodesWatched(episodes: List<Episode>, watched: Boolean) {
+        val details = _state.value.details ?: return
+        val targets = episodes.filter { it.released }
+        graph.marks.set(markTitle(details), targets.map { MarkVideo(it.season, it.number, it.name, it.stillPath, it.runtime) }, watched)
+        val imdb = details.imdbId ?: return
+        val ids = targets.map { "$imdb:${it.season}:${it.number}" }.toSet()
+        remoteWatched.update { r -> r?.copy(videos = if (watched) r.videos + ids else r.videos - ids) }
+    }
+
+    fun setMovieWatched(watched: Boolean) {
+        val details = _state.value.details ?: return
+        graph.marks.set(markTitle(details), listOf(MarkVideo()), watched)
+        remoteWatched.update { it?.copy(movie = watched) }
     }
 
     fun selectSeason(number: Int) {
@@ -149,7 +244,13 @@ class DetailViewModel(
         }
         viewModelScope.launch {
             val target = mainTarget() ?: return@launch
-            val entry = progress.value[ProgressEntry.key(type, id, target.season, target.episode)]
+            val key = ProgressEntry.key(type, id, target.season, target.episode)
+            val entry = progress.value[key]
+            // Downloaded: straight to the file, no internet needed.
+            graph.downloads.local(key)?.let { local ->
+                _playRequests.send(local.playback(entry?.takeIf { !it.finished && it.positionMs > 30_000 }?.positionMs ?: 0L))
+                return@launch
+            }
             val saved = entry?.lastStream?.takeIf { !entry.finished && entry.positionMs > 0 && playable(it) }
             val request = saved?.let { playbackRequest(target, it) }
             if (request != null) _playRequests.send(request) else openStreams(target)
@@ -168,7 +269,7 @@ class DetailViewModel(
         return !latest.finished && latest.positionMs > 0 && playable(saved)
     }
 
-    private fun playable(saved: SavedStream) = saved.url != null || graph.torrents.available
+    private fun playable(saved: SavedStream) = saved.playable(graph.torrents.available)
 
     private suspend fun mainTarget(): StreamTarget? {
         if (type == MediaType.Movie) return StreamTarget()

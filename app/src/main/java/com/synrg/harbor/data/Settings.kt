@@ -56,7 +56,15 @@ data class Settings(
     val subtitleLanguage: String = "es",
     val subtitleScale: Float = 1f,
     val autoplayNext: Boolean = true,
-) {}
+    /** Ask before streaming on mobile data or another metered connection. */
+    val askOnMobileData: Boolean = true,
+    /** Notify when a followed series has a new episode. */
+    val episodeAlerts: Boolean = true,
+    /** Android's notification permission was already asked for once. */
+    val notificationPromptShown: Boolean = false,
+    /** Downloads wait for Wi-Fi (or another unmetered network). */
+    val downloadWifiOnly: Boolean = true,
+)
 
 class SettingsRepository(private val store: JsonStore<Settings>) {
     val state: StateFlow<Settings> = store.state
