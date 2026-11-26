@@ -28,5 +28,5 @@ foreach ($a in $Abi) {
     New-Item -ItemType Directory -Force $out | Out-Null
     Copy-Item (Join-Path $ProjectRoot "native\target\$t\release\libharbor_torrent.so") $out -Force
     $size = [math]::Round((Get-Item (Join-Path $out 'libharbor_torrent.so')).Length / 1MB, 1)
-    "$a listo ($size MB)"
+    "$a done ($size MB)"
 }

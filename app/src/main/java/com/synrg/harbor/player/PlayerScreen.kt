@@ -4,6 +4,7 @@ import android.graphics.Typeface
 import android.media.AudioManager
 import android.os.SystemClock
 import android.provider.Settings
+import androidx.annotation.StringRes
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -65,6 +66,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -78,6 +81,7 @@ import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import androidx.media3.ui.SubtitleView
 import coil3.compose.AsyncImage
+import com.synrg.harbor.R
 import com.synrg.harbor.core.Connection
 import com.synrg.harbor.data.Img
 import com.synrg.harbor.graph
@@ -118,7 +122,7 @@ private enum class PlayerPanel { Tracks, Sleep }
 /** What a vertical/horizontal swipe is adjusting, shown in the centre while dragging. */
 @Immutable
 private sealed interface Hud {
-    data class Level(val icon: ImageVector, val label: String, val fraction: Float) : Hud
+    data class Level(val icon: ImageVector, @StringRes val label: Int, val fraction: Float) : Hud
     data class Seek(val targetMs: Long, val deltaMs: Long) : Hud
 }
 
@@ -302,12 +306,12 @@ fun PlayerScreen(player: ExoPlayer, controller: PlayerActivity) {
                                 2 -> {
                                     val level = (startLevel - total.y / (size.height * 0.8f)).coerceIn(0.01f, 1f)
                                     controller.window.attributes = controller.window.attributes.apply { screenBrightness = level }
-                                    hud = Hud.Level(HIcons.Brightness, "Brillo", level)
+                                    hud = Hud.Level(HIcons.Brightness, R.string.player_brightness, level)
                                 }
                                 3 -> {
                                     val level = (startLevel - total.y / (size.height * 0.8f)).coerceIn(0f, 1f)
                                     audio.setStreamVolume(AudioManager.STREAM_MUSIC, (level * maxVolume).roundToInt(), 0)
-                                    hud = Hud.Level(HIcons.Volume, "Volumen", level)
+                                    hud = Hud.Level(HIcons.Volume, R.string.player_volume, level)
                                 }
                             }
                         },
@@ -419,7 +423,7 @@ fun PlayerScreen(player: ExoPlayer, controller: PlayerActivity) {
             ) {
                 Icon(HIcons.LockOpen, null, tint = HarborColors.Accent, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(10.dp))
-                Text("Pantalla bloqueada · tocá acá para desbloquear", style = MaterialTheme.typography.labelLarge, color = Color.White)
+                Text(stringResource(R.string.player_locked_hint), style = MaterialTheme.typography.labelLarge, color = Color.White)
             }
         }
 
@@ -466,7 +470,7 @@ private fun HudView(hud: Hud, modifier: Modifier) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(hud.icon, null, tint = Color.White, modifier = Modifier.size(22.dp))
                     Spacer(Modifier.width(10.dp))
-                    Text("${hud.label}  ${(hud.fraction * 100).roundToInt()}%", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                    Text("${stringResource(hud.label)}  ${(hud.fraction * 100).roundToInt()}%", style = MaterialTheme.typography.titleMedium, color = Color.White)
                 }
                 Spacer(Modifier.height(12.dp))
                 Box(
@@ -495,7 +499,7 @@ private fun NextEpisodeCard(next: PlaybackRequest, countdown: Int, onPlay: () ->
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f, fill = false)) {
-            Text("Siguiente episodio", style = MaterialTheme.typography.labelMedium, color = HarborColors.Accent)
+            Text(stringResource(R.string.player_next_episode), style = MaterialTheme.typography.labelMedium, color = HarborColors.Accent)
             Text(
                 next.displaySubtitle.orEmpty(),
                 style = MaterialTheme.typography.titleSmall,
@@ -505,9 +509,13 @@ private fun NextEpisodeCard(next: PlaybackRequest, countdown: Int, onPlay: () ->
             )
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                PrimaryButton(if (countdown > 0) "Ver ahora · $countdown" else "Ver ahora", HIcons.Play, onPlay)
+                PrimaryButton(
+                    if (countdown > 0) stringResource(R.string.player_watch_now_countdown, countdown) else stringResource(R.string.player_watch_now),
+                    HIcons.Play,
+                    onPlay,
+                )
                 Spacer(Modifier.width(8.dp))
-                RoundIconButton(HIcons.Close, "Cerrar", onDismiss, size = 40.dp)
+                RoundIconButton(HIcons.Close, stringResource(R.string.common_close), onDismiss, size = 40.dp)
             }
         }
     }
@@ -520,8 +528,8 @@ private fun LoadingIndicator(status: PlayerStatus) {
         val torrent = status.torrent
         val line = when {
             status.preparing != null && status.torrent == null -> status.preparing
-            torrent != null && torrent.peers > 0 -> "${torrent.peers} pares · ${formatSpeed(torrent.downloadBps)}"
-            torrent != null -> "Buscando pares…"
+            torrent != null && torrent.peers > 0 -> pluralStringResource(R.plurals.player_peers_speed, torrent.peers, torrent.peers, formatSpeed(torrent.downloadBps))
+            torrent != null -> stringResource(R.string.player_finding_peers)
             else -> status.preparing
         }
         if (line != null) {
@@ -571,7 +579,7 @@ private fun Controls(
             Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 18.dp).align(Alignment.TopStart),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            RoundIconButton(HIcons.Back, "Salir", onBack)
+            RoundIconButton(HIcons.Back, stringResource(R.string.player_exit), onBack)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(request?.title.orEmpty(), style = MaterialTheme.typography.titleMedium, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -581,7 +589,7 @@ private fun Controls(
             }
             status.torrent?.let {
                 Text(
-                    "${it.peers} pares · ${formatSpeed(it.downloadBps)}",
+                    pluralStringResource(R.plurals.player_peers_speed, it.peers, it.peers, formatSpeed(it.downloadBps)),
                     style = MaterialTheme.typography.labelSmall,
                     color = Color.White.copy(alpha = 0.7f),
                     modifier = Modifier.padding(end = 12.dp),
@@ -591,11 +599,11 @@ private fun Controls(
                 Text(it, style = MaterialTheme.typography.labelSmall, color = HarborColors.Accent, modifier = Modifier.padding(end = 12.dp))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                RoundIconButton(HIcons.Lock, "Bloquear pantalla", onLock)
-                RoundIconButton(HIcons.Bedtime, "Temporizador", onSleep, tint = if (status.sleep != null) HarborColors.Accent else Color.White)
-                RoundIconButton(HIcons.Subtitles, "Audio y subtítulos", onTracks)
-                RoundIconButton(HIcons.AspectRatio, "Ajustar imagen", onResize)
-                RoundIconButton(HIcons.Pip, "Ventana flotante", onPip)
+                RoundIconButton(HIcons.Lock, stringResource(R.string.player_lock_screen), onLock)
+                RoundIconButton(HIcons.Bedtime, stringResource(R.string.sleep_timer), onSleep, tint = if (status.sleep != null) HarborColors.Accent else Color.White)
+                RoundIconButton(HIcons.Subtitles, stringResource(R.string.player_audio_subtitles), onTracks)
+                RoundIconButton(HIcons.AspectRatio, stringResource(R.string.player_resize), onResize)
+                RoundIconButton(HIcons.Pip, stringResource(R.string.player_pip), onPip)
             }
         }
 
@@ -608,7 +616,7 @@ private fun Controls(
                 SkipButton(forward = false) { player.seekBack(); ui.tick(); onInteract() }
                 RoundIconButton(
                     if (ui.isPlaying) HIcons.Pause else HIcons.Play,
-                    if (ui.isPlaying) "Pausa" else "Reproducir",
+                    if (ui.isPlaying) stringResource(R.string.player_pause) else stringResource(R.string.player_play),
                     onClick = {
                         if (ui.isPlaying) player.pause() else {
                             if (player.playbackState == Player.STATE_ENDED) player.seekTo(0)
@@ -625,7 +633,7 @@ private fun Controls(
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 28.dp, vertical = 16.dp)) {
             if (showNextButton && status.hasNext && request?.episode != null) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    GlassButton("Siguiente", HIcons.SkipNext, onNext)
+                    GlassButton(stringResource(R.string.player_next), HIcons.SkipNext, onNext)
                 }
                 Spacer(Modifier.height(10.dp))
             }
@@ -649,20 +657,22 @@ private fun Controls(
     }
 }
 
-/** "Pausa en 23 min" while a timer runs; the controls recompose often enough to keep it current. */
+/** "Pausing in 23 min" while a timer runs; the controls recompose often enough to keep it current. */
+@Composable
 private fun sleepLabel(timer: SleepTimer?): String? = when (timer) {
     null -> null
-    SleepTimer.EndOfVideo -> "Pausa al terminar"
+    SleepTimer.EndOfVideo -> stringResource(R.string.sleep_pausing_at_end)
     is SleepTimer.At -> {
         val left = (timer.endsAt - SystemClock.elapsedRealtime()).coerceAtLeast(0)
-        if (left < 60_000) "Pausa en ${left / 1000} s" else "Pausa en ${(left + 59_999) / 60_000} min"
+        if (left < 60_000) stringResource(R.string.sleep_pausing_in_seconds, left / 1000)
+        else stringResource(R.string.sleep_pausing_in_minutes, (left + 59_999) / 60_000)
     }
 }
 
 @Composable
 private fun SkipButton(forward: Boolean, onClick: () -> Unit) {
     Box(contentAlignment = Alignment.Center) {
-        RoundIconButton(if (forward) HIcons.Forward else HIcons.Replay, if (forward) "Adelantar 10 segundos" else "Retroceder 10 segundos", onClick, size = 52.dp)
+        RoundIconButton(if (forward) HIcons.Forward else HIcons.Replay, if (forward) stringResource(R.string.player_skip_forward) else stringResource(R.string.player_skip_back), onClick, size = 52.dp)
         Text("10", color = Color.White, fontSize = 9.sp, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 3.dp))
     }
 }
@@ -735,22 +745,22 @@ private fun DataWarningPanel(connection: Connection, onPlay: () -> Unit, onCance
             }
             Spacer(Modifier.height(12.dp))
             Text(
-                if (connection == Connection.Cellular) "No estás conectado a Wi-Fi" else "Esta red tiene datos limitados",
+                stringResource(if (connection == Connection.Cellular) R.string.player_data_warning_cellular else R.string.player_data_warning_metered),
                 style = MaterialTheme.typography.titleMedium,
                 color = Color.White,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                "Ver esto puede gastar varios GB de tu plan. ¿Reproducir de todos modos?",
+                stringResource(R.string.player_data_warning_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = HarborColors.TextDim,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                GlassButton("Cancelar", null, onCancel)
-                PrimaryButton("Reproducir igual", HIcons.Play, onPlay)
+                GlassButton(stringResource(R.string.common_cancel), null, onCancel)
+                PrimaryButton(stringResource(R.string.player_play_anyway), HIcons.Play, onPlay)
             }
         }
     }
@@ -767,13 +777,13 @@ private fun ErrorPanel(message: String, onRetry: () -> Unit, onBack: () -> Unit)
                 Icon(HIcons.Info, null, tint = HarborColors.Warn, modifier = Modifier.size(24.dp))
             }
             Spacer(Modifier.height(12.dp))
-            Text("No se pudo reproducir", style = MaterialTheme.typography.titleMedium, color = Color.White)
+            Text(stringResource(R.string.player_error_title), style = MaterialTheme.typography.titleMedium, color = Color.White)
             Spacer(Modifier.height(6.dp))
             Text(message, style = MaterialTheme.typography.bodyMedium, color = HarborColors.TextDim)
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                GlassButton("Otra fuente", HIcons.Back, onBack)
-                PrimaryButton("Reintentar", HIcons.Refresh, onRetry)
+                GlassButton(stringResource(R.string.player_other_stream), HIcons.Back, onBack)
+                PrimaryButton(stringResource(R.string.common_retry), HIcons.Refresh, onRetry)
             }
         }
     }

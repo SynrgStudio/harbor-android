@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared by several screens. Area-specific strings live in strings_<area>.xml. -->
+    <string name="common_cancel">Cancel</string>
+    <string name="common_close">Close</string>
+    <string name="common_retry">Retry</string>
+    <string name="common_not_now">Not now</string>
+    <string name="common_remove">Remove</string>
+    <!-- Season and episode number, e.g. "S1:E2". -->
+    <string name="common_episode_code">S%1$d:E%2$d</string>
+    <string name="common_season_n">Season %1$d</string>
+    <string name="common_episode_n">Episode %1$d</string>
+    <string name="common_episodes">Episodes</string>
+    <string name="common_new_episodes">New episodes</string>
+</resources>

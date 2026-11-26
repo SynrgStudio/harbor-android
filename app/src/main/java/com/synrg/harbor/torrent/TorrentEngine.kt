@@ -2,8 +2,10 @@ package com.synrg.harbor.torrent
 
 import android.app.Application
 import androidx.compose.runtime.Immutable
+import com.synrg.harbor.R
 import com.synrg.harbor.core.HttpException
 import com.synrg.harbor.core.NetworkMonitor
+import com.synrg.harbor.core.Strings
 import com.synrg.harbor.core.await
 import com.synrg.harbor.data.SavedStream
 import kotlinx.coroutines.CoroutineScope
@@ -111,13 +113,13 @@ class TorrentEngine(
 
     private suspend fun ensureStarted(): Int = mutex.withLock {
         if (port > 0) return port
-        if (!available) throw IOException("Esta versión no trae el motor de torrents")
+        if (!available) throw IOException(Strings.get(R.string.torrent_engine_missing))
         withContext(Dispatchers.IO) {
             outputDir.mkdirs()
             stateDir.mkdirs()
             pruneCache()
             val p = NativeEngine.start(outputDir.absolutePath, stateDir.absolutePath)
-            if (p <= 0) throw IOException("No arrancó el motor de torrents: ${NativeEngine.lastError() ?: "error desconocido"}")
+            if (p <= 0) throw IOException(Strings.get(R.string.torrent_engine_not_started, NativeEngine.lastError() ?: Strings.get(R.string.torrent_unknown_error)))
             port = p
         }
         watchNetwork()
@@ -163,14 +165,14 @@ class TorrentEngine(
     private suspend fun call(request: Request): JsonObject {
         val response = http.newCall(request).await()
         val text = response.use { withContext(Dispatchers.IO) { it.body.string() } }
-        if (!response.isSuccessful) throw HttpException(response.code, "Motor de torrents: ${text.take(200)}")
+        if (!response.isSuccessful) throw HttpException(response.code, Strings.get(R.string.torrent_engine_error, text.take(200)))
         return json.parseToJsonElement(text).jsonObject
     }
 
     suspend fun open(stream: SavedStream): TorrentStream = add(stream).also { streaming += it.torrentId }
 
     private suspend fun add(stream: SavedStream): TorrentStream {
-        val hash = stream.infoHash ?: throw IOException("La fuente no tiene hash de torrent")
+        val hash = stream.infoHash ?: throw IOException(Strings.get(R.string.torrent_no_hash))
         val port = ensureStarted()
         val magnet = buildString {
             append("magnet:?xt=urn:btih:").append(hash)
@@ -185,7 +187,7 @@ class TorrentEngine(
                 .post(magnet.toRequestBody("text/plain".toMediaType()))
                 .build(),
         )
-        val id = added["id"]?.jsonPrimitive?.intOrNull ?: throw IOException("El motor no devolvió el torrent")
+        val id = added["id"]?.jsonPrimitive?.intOrNull ?: throw IOException(Strings.get(R.string.torrent_not_returned))
         val files = added["details"]?.jsonObject?.get("files")?.jsonArray.orEmpty().mapIndexed { i, f ->
             val o = f.jsonObject
             Triple(i, o["name"]?.jsonPrimitive?.contentOrNull ?: "", o["length"]?.jsonPrimitive?.longOrNull ?: 0L)

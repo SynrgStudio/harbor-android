@@ -16,8 +16,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.synrg.harbor.R
 import com.synrg.harbor.graph
 import com.synrg.harbor.ui.components.GlassButton
 import com.synrg.harbor.ui.components.PrimaryButton
@@ -31,13 +33,13 @@ fun UpdateCard(state: UpdateState, modifier: Modifier = Modifier) {
     val updater = context.graph.updater
     when (state) {
         UpdateState.Idle -> Unit
-        is UpdateState.Available -> Card("Hay una versión nueva: ${state.release.version}", notesPreview(state.release.notes), modifier) {
+        is UpdateState.Available -> Card(stringResource(R.string.update_available, state.release.version), notesPreview(state.release.notes), modifier) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PrimaryButton("Actualizar", HIcons.Refresh, onClick = { updater.start(state.release) }, modifier = Modifier.weight(1f))
-                GlassButton("Ahora no", null, onClick = { updater.dismiss(state.release) })
+                PrimaryButton(stringResource(R.string.update_action), HIcons.Refresh, onClick = { updater.start(state.release) }, modifier = Modifier.weight(1f))
+                GlassButton(stringResource(R.string.common_not_now), null, onClick = { updater.dismiss(state.release) })
             }
         }
-        is UpdateState.Downloading -> Card("Descargando Harbor ${state.release.version}…", "${(state.progress * 100).toInt()}%", modifier) {
+        is UpdateState.Downloading -> Card(stringResource(R.string.update_downloading, state.release.version), "${(state.progress * 100).toInt()}%", modifier) {
             LinearProgressIndicator(
                 progress = { state.progress },
                 color = HarborColors.Accent,
@@ -47,23 +49,23 @@ fun UpdateCard(state: UpdateState, modifier: Modifier = Modifier) {
             )
         }
         is UpdateState.NeedsPermission -> Card(
-            "Falta un permiso para instalarla",
-            "Android pide habilitar \"Instalar apps desconocidas\" para Harbor. Activalo y volvé: la instalación sigue sola.",
+            stringResource(R.string.update_permission_title),
+            stringResource(R.string.update_permission_body),
             modifier,
         ) {
-            PrimaryButton("Abrir ajustes de Android", null, onClick = { context.startActivity(updater.permissionIntent()) }, modifier = Modifier.fillMaxWidth())
+            PrimaryButton(stringResource(R.string.update_open_android_settings), null, onClick = { context.startActivity(updater.permissionIntent()) }, modifier = Modifier.fillMaxWidth())
         }
         is UpdateState.Installing -> Card(
-            "Instalando Harbor ${state.release.version}…",
-            "Confirmá en el aviso de Android. La app se cierra al terminar; volvé a abrirla.",
+            stringResource(R.string.update_installing, state.release.version),
+            stringResource(R.string.update_installing_body),
             modifier,
         ) {}
-        is UpdateState.Failed -> Card("No se pudo actualizar", state.message, modifier) {
+        is UpdateState.Failed -> Card(stringResource(R.string.update_failed), state.message, modifier) {
             val release = state.release
             if (release != null) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PrimaryButton("Reintentar", HIcons.Refresh, onClick = { updater.start(release) }, modifier = Modifier.weight(1f))
-                    GlassButton("Ahora no", null, onClick = { updater.dismiss(release) })
+                    PrimaryButton(stringResource(R.string.common_retry), HIcons.Refresh, onClick = { updater.start(release) }, modifier = Modifier.weight(1f))
+                    GlassButton(stringResource(R.string.common_not_now), null, onClick = { updater.dismiss(release) })
                 }
             }
         }
@@ -92,7 +94,7 @@ private fun Card(title: String, body: String, modifier: Modifier, actions: @Comp
     }
 }
 
-/** The release notes in short: each item's bold lead ("**Nueva pestaña:** …" → "Nueva pestaña"), or its text. */
+/** The release notes in short: each item's bold lead ("**New tab:** …" → "New tab"), or its text. */
 private fun notesPreview(notes: String): String =
     notes.substringBefore("\n---").lines()
         .map { it.trim().removePrefix("- ") }

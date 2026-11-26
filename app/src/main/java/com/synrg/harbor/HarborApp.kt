@@ -11,6 +11,7 @@ import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
 import com.synrg.harbor.core.AppGraph
 import com.synrg.harbor.core.Shortcuts
+import com.synrg.harbor.core.Strings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
@@ -26,13 +27,14 @@ class HarborApp : Application(), SingletonImageLoader.Factory {
     @OptIn(FlowPreview::class)
     override fun onCreate() {
         super.onCreate()
+        Strings.init(this)
         // Warm the stores off the main thread so the first frame never waits on disk.
         graph.scope.launch(Dispatchers.IO) {
             graph.settings
             graph.progress
             graph.watchlist
         }
-        // Launcher shortcuts follow "Seguir viendo" (only when the titles in it change).
+        // Launcher shortcuts follow "Continue watching" (only when the titles in it change).
         graph.scope.launch {
             graph.progress.inProgress
                 .map { it.take(4) }

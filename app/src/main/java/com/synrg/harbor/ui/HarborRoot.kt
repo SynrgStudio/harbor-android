@@ -1,5 +1,6 @@
 package com.synrg.harbor.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -35,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -45,6 +47,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.synrg.harbor.R
 import com.synrg.harbor.core.AppLink
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.synrg.harbor.ui.downloads.DownloadsScreen
@@ -83,14 +86,14 @@ import kotlinx.serialization.Serializable
 /** [season]: the one to show first (a new episode's), instead of the one being watched. */
 @Serializable data class DetailRoute(val type: String, val id: Int, val autoplay: Boolean = false, val season: Int? = null)
 
-private data class Tab(val route: Any, val label: String, val icon: ImageVector)
+private data class Tab(val route: Any, @StringRes val label: Int, val icon: ImageVector)
 
 private val tabs = listOf(
-    Tab(HomeRoute, "Inicio", HIcons.Home),
-    Tab(ContinueRoute, "Continuar", HIcons.History),
-    Tab(SearchRoute, "Buscar", HIcons.Search),
-    Tab(LibraryRoute, "Mi lista", HIcons.Bookmark),
-    Tab(SettingsRoute, "Ajustes", HIcons.Settings),
+    Tab(HomeRoute, R.string.nav_home, HIcons.Home),
+    Tab(ContinueRoute, R.string.nav_continue, HIcons.History),
+    Tab(SearchRoute, R.string.nav_search, HIcons.Search),
+    Tab(LibraryRoute, R.string.nav_library, HIcons.Bookmark),
+    Tab(SettingsRoute, R.string.nav_settings, HIcons.Settings),
 )
 
 private val BarHeight = 64.dp
@@ -248,6 +251,7 @@ private fun BottomBar(nav: NavHostController, hazeState: HazeState, destination:
     ) {
         tabs.forEach { tab ->
             val selected = destination?.hasRoute(tab.route::class) == true
+            val label = stringResource(tab.label)
             Column(
                 Modifier
                     .weight(1f)
@@ -261,10 +265,10 @@ private fun BottomBar(nav: NavHostController, hazeState: HazeState, destination:
                         .background(if (selected) HarborColors.Accent.copy(alpha = 0.16f) else Color.Transparent)
                         .padding(horizontal = 14.dp, vertical = 3.dp),
                 ) {
-                    Icon(tab.icon, tab.label, tint = if (selected) HarborColors.Accent else HarborColors.TextDim, modifier = Modifier.size(22.dp))
+                    Icon(tab.icon, label, tint = if (selected) HarborColors.Accent else HarborColors.TextDim, modifier = Modifier.size(22.dp))
                 }
                 Text(
-                    tab.label,
+                    label,
                     style = MaterialTheme.typography.labelSmall,
                     color = if (selected) HarborColors.Text else HarborColors.TextFaint,
                     maxLines = 1,

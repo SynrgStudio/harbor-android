@@ -35,9 +35,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import android.os.SystemClock
+import androidx.annotation.StringRes
 import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.common.PlaybackParameters
@@ -45,6 +48,8 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import com.synrg.harbor.BuildConfig
+import com.synrg.harbor.R
+import com.synrg.harbor.core.Strings
 import com.synrg.harbor.ui.theme.HIcons
 import com.synrg.harbor.ui.theme.HarborColors
 import java.util.Locale
@@ -57,16 +62,16 @@ private fun describe(format: Format, type: Int): String {
         format.label?.takeIf { it.isNotBlank() && !it.equals(lang, true) }?.let(::add)
         if (type == C.TRACK_TYPE_AUDIO) {
             when (format.channelCount) {
-                1 -> add("Mono")
-                2 -> add("Estéreo")
+                1 -> add(Strings.get(R.string.tracks_mono))
+                2 -> add(Strings.get(R.string.tracks_stereo))
                 6 -> add("5.1")
                 8 -> add("7.1")
             }
             format.sampleMimeType?.substringAfter('/')?.uppercase(Locale.ROOT)?.replace("VND.DTS", "DTS")?.replace("EAC3", "E-AC3")?.let(::add)
         }
-        if (type == C.TRACK_TYPE_TEXT && (format.selectionFlags and C.SELECTION_FLAG_FORCED) != 0) add("Forzados")
+        if (type == C.TRACK_TYPE_TEXT && (format.selectionFlags and C.SELECTION_FLAG_FORCED) != 0) add(Strings.get(R.string.tracks_forced))
     }
-    return listOfNotNull(lang ?: if (extra.isEmpty()) "Pista" else null).plus(extra).joinToString(" · ")
+    return listOfNotNull(lang ?: if (extra.isEmpty()) Strings.get(R.string.tracks_generic) else null).plus(extra).joinToString(" · ")
 }
 
 private fun choices(tracks: Tracks, type: Int): List<TrackChoice> =
@@ -77,7 +82,7 @@ private fun choices(tracks: Tracks, type: Int): List<TrackChoice> =
         }
     }
 
-private enum class Tab(val label: String) { Audio("Audio"), Subtitles("Subtítulos"), Speed("Velocidad") }
+private enum class Tab(@StringRes val label: Int) { Audio(R.string.tracks_audio), Subtitles(R.string.tracks_subtitles), Speed(R.string.tracks_speed) }
 
 /** Side panel inside the player window, so the video stays full screen while choosing. */
 @Composable
@@ -101,6 +106,7 @@ fun TracksPanel(player: Player, status: PlayerStatus, controller: PlayerActivity
             ?.firstOrNull { cfg -> val id = cfg.id; id != null && selectedId?.contains(id) == true }?.uri?.toString()
     }
     var speed by remember { mutableStateOf(player.playbackParameters.speed) }
+    val savedTag = stringResource(R.string.subs_saved)
 
     fun select(choice: TrackChoice, type: Int, position: Int = 0) {
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
@@ -130,13 +136,13 @@ fun TracksPanel(player: Player, status: PlayerStatus, controller: PlayerActivity
                             .padding(vertical = 9.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(t.label, style = MaterialTheme.typography.labelLarge, color = if (active) HarborColors.Accent else HarborColors.TextDim)
+                        Text(stringResource(t.label), style = MaterialTheme.typography.labelLarge, color = if (active) HarborColors.Accent else HarborColors.TextDim)
                     }
                 }
             }
             Spacer(Modifier.width(8.dp))
             Icon(
-                HIcons.Close, "Cerrar", tint = HarborColors.TextDim,
+                HIcons.Close, stringResource(R.string.common_close), tint = HarborColors.TextDim,
                 modifier = Modifier.size(40.dp).clip(RoundedCornerShape(20.dp)).clickable(onClick = onClose).padding(9.dp),
             )
         }
@@ -145,13 +151,13 @@ fun TracksPanel(player: Player, status: PlayerStatus, controller: PlayerActivity
             when (tab) {
                 Tab.Audio -> {
                     val audio = choices(tracks, C.TRACK_TYPE_AUDIO)
-                    if (audio.isEmpty()) item { Hint("Todavía no se cargaron las pistas de audio.") }
+                    if (audio.isEmpty()) item { Hint(stringResource(R.string.tracks_audio_not_loaded)) }
                     items(audio) { c -> Option(c.label, c.selected) { select(c, C.TRACK_TYPE_AUDIO) } }
                 }
                 Tab.Subtitles -> {
                     if (!textDisabled) item { SubtitleSync(status.subtitleDelayMs, controller::setSubtitleDelay) }
                     item {
-                        Option("Desactivados", textDisabled) {
+                        Option(stringResource(R.string.subs_off), textDisabled) {
                             player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
                                 .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build()
                             controller.rememberSubtitlesOff()
@@ -162,11 +168,11 @@ fun TracksPanel(player: Player, status: PlayerStatus, controller: PlayerActivity
                     itemsIndexed(embedded) { i, c ->
                         Option(c.label, c.selected && !textDisabled) { select(c, C.TRACK_TYPE_TEXT, i) }
                     }
-                    item { SectionLabel("De internet") }
+                    item { SectionLabel(stringResource(R.string.subs_online)) }
                     val external = status.externalSubs
                     when {
                         status.loadingSubs -> item { CircularProgressIndicator(Modifier.padding(8.dp).size(18.dp), strokeWidth = 2.dp) }
-                        external.isNullOrEmpty() -> item { Hint("No hay subtítulos de addons para esto.") }
+                        external.isNullOrEmpty() -> item { Hint(stringResource(R.string.subs_none_online)) }
                         else -> {
                             // Same-language entries get a number so they can be told apart.
                             val seen = HashMap<String, Int>()
@@ -174,7 +180,7 @@ fun TracksPanel(player: Player, status: PlayerStatus, controller: PlayerActivity
                                 val name = Languages.label(sub.lang)
                                 val n = (seen[name] ?: 0) + 1
                                 seen[name] = n
-                                sub to "$name $n" + if (sub.url.startsWith("file://")) " · guardado" else ""
+                                sub to "$name $n" + if (sub.url.startsWith("file://")) " · $savedTag" else ""
                             }
                             items(labelled, key = { it.first.url }) { (sub, label) ->
                                 Option(label, sub.url == activeExternalUrl && !textDisabled) {
@@ -187,7 +193,7 @@ fun TracksPanel(player: Player, status: PlayerStatus, controller: PlayerActivity
                 }
                 Tab.Speed -> {
                     items(listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)) { s ->
-                        Option(if (s == 1f) "Normal" else String.format(Locale.ROOT, "%sx", s.toString().removeSuffix(".0")), speed == s) {
+                        Option(if (s == 1f) stringResource(R.string.tracks_speed_normal) else String.format(Locale.ROOT, "%sx", s.toString().removeSuffix(".0")), speed == s) {
                             player.playbackParameters = PlaybackParameters(s)
                             speed = s
                         }
@@ -211,9 +217,8 @@ private fun PanelFrame(content: @Composable ColumnScope.() -> Unit) {
     )
 }
 
-private val delayFormat = Locale.forLanguageTag("es-AR")
-
-private fun formatDelay(ms: Long): String = String.format(delayFormat, "%+.1f s", ms / 1000.0).replace('-', '−')
+/** "+0.5 s" in English, "+0,5 s" in Spanish. */
+private fun formatDelay(ms: Long): String = String.format(Strings.locale, "%+.1f s", ms / 1000.0).replace('-', '−')
 
 /** Moves the subtitles against the video in small steps, while watching them over the picture. */
 @Composable
@@ -223,16 +228,16 @@ private fun SubtitleSync(delayMs: Long, onChange: (Long) -> Unit) {
             .background(HarborColors.SurfaceHigh).padding(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Sincronía", style = MaterialTheme.typography.labelLarge, color = HarborColors.Text)
+            Text(stringResource(R.string.subs_sync), style = MaterialTheme.typography.labelLarge, color = HarborColors.Text)
             Spacer(Modifier.weight(1f))
             Text(
-                if (delayMs == 0L) "Sin ajuste" else formatDelay(delayMs),
+                if (delayMs == 0L) stringResource(R.string.subs_no_offset) else formatDelay(delayMs),
                 style = MaterialTheme.typography.labelLarge,
                 color = if (delayMs == 0L) HarborColors.TextDim else HarborColors.Accent,
             )
             if (delayMs != 0L) {
                 Text(
-                    "Restablecer",
+                    stringResource(R.string.subs_reset),
                     style = MaterialTheme.typography.labelMedium,
                     color = HarborColors.TextDim,
                     modifier = Modifier.padding(start = 6.dp).clip(RoundedCornerShape(8.dp)).clickable { onChange(0) }
@@ -254,7 +259,7 @@ private fun SubtitleSync(delayMs: Long, onChange: (Long) -> Unit) {
         }
         Spacer(Modifier.size(6.dp))
         Text(
-            "Si aparecen antes de que hablen, sumá; si aparecen tarde, restá.",
+            stringResource(R.string.subs_sync_hint),
             style = MaterialTheme.typography.bodySmall,
             color = HarborColors.TextFaint,
         )
@@ -266,29 +271,28 @@ private fun SubtitleSync(delayMs: Long, onChange: (Long) -> Unit) {
 fun SleepPanel(current: SleepTimer?, isEpisode: Boolean, onPick: (SleepTimer?) -> Unit, onClose: () -> Unit) {
     PanelFrame {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Temporizador", style = MaterialTheme.typography.titleMedium, color = HarborColors.Text, modifier = Modifier.weight(1f).padding(start = 4.dp))
+            Text(stringResource(R.string.sleep_timer), style = MaterialTheme.typography.titleMedium, color = HarborColors.Text, modifier = Modifier.weight(1f).padding(start = 4.dp))
             Icon(
-                HIcons.Close, "Cerrar", tint = HarborColors.TextDim,
+                HIcons.Close, stringResource(R.string.common_close), tint = HarborColors.TextDim,
                 modifier = Modifier.size(40.dp).clip(RoundedCornerShape(20.dp)).clickable(onClick = onClose).padding(9.dp),
             )
         }
-        Hint("Baja el volumen de a poco y pausa; después la pantalla se apaga sola.")
+        Hint(stringResource(R.string.sleep_hint))
         LazyColumn(contentPadding = PaddingValues(bottom = 24.dp), modifier = Modifier.fillMaxWidth()) {
-            item { Option("Desactivado", current == null) { onPick(null) } }
+            item { Option(stringResource(R.string.sleep_off), current == null) { onPick(null) } }
             // Debug builds add a 1-minute timer to try it out.
             items(listOfNotNull(1.takeIf { BuildConfig.DEBUG }, 15, 30, 45, 60, 90)) { minutes ->
                 val label = when {
-                    minutes == 1 -> "1 minuto"
-                    minutes < 60 -> "$minutes minutos"
-                    minutes == 60 -> "1 hora"
-                    else -> "1 h ${minutes - 60} min"
+                    minutes < 60 -> pluralStringResource(R.plurals.sleep_minutes, minutes, minutes)
+                    minutes == 60 -> stringResource(R.string.sleep_one_hour)
+                    else -> stringResource(R.string.sleep_hour_and_minutes, minutes - 60)
                 }
                 Option(label, (current as? SleepTimer.At)?.minutes == minutes) {
                     onPick(SleepTimer.At(SystemClock.elapsedRealtime() + minutes * 60_000L, minutes))
                 }
             }
             item {
-                Option(if (isEpisode) "Al terminar este episodio" else "Al terminar la película", current == SleepTimer.EndOfVideo) {
+                Option(stringResource(if (isEpisode) R.string.sleep_end_of_episode else R.string.sleep_end_of_movie), current == SleepTimer.EndOfVideo) {
                     onPick(SleepTimer.EndOfVideo)
                 }
             }

@@ -25,7 +25,7 @@ data class MarkVideo(
 )
 
 /**
- * "Visto" by hand: here it is a progress entry at the end (or none), in the Stremio account it is
+ * "Watched" by hand: here it is a progress entry at the end (or none), in the Stremio account it is
  * the same mark Stremio and Harbor desktop show.
  */
 class WatchedMarks(private val progress: ProgressRepository, private val sync: StremioSync) {
@@ -43,7 +43,7 @@ class WatchedMarks(private val progress: ProgressRepository, private val sync: S
                     title = title.title, episodeTitle = v.name, poster = title.poster, backdrop = title.backdrop,
                     still = v.still, imdbId = title.imdbId,
                 )
-                // In order, so the last one marked counts as the latest ("Siguiente episodio" follows it).
+                // In order, so the last one marked counts as the latest ("Next episode" follows it).
                 progress.save(base.copy(positionMs = duration, durationMs = duration, updatedAt = now + i, imdbId = base.imdbId ?: title.imdbId))
             } else if (existing?.finished == true) {
                 progress.removeKey(key)

@@ -1,9 +1,12 @@
 package com.synrg.harbor.ui.home
 
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.synrg.harbor.R
 import com.synrg.harbor.core.AppGraph
+import com.synrg.harbor.core.Strings
 import com.synrg.harbor.data.HeroItem
 import com.synrg.harbor.data.MediaItem
 import com.synrg.harbor.data.ProgressEntry
@@ -27,7 +30,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 
 @Immutable
-data class HomeRow(val key: String, val title: String, val items: List<MediaItem>)
+data class HomeRow(val key: String, @StringRes val title: Int, val items: List<MediaItem>)
 
 @Immutable
 data class HomeState(
@@ -119,6 +122,6 @@ class HomeViewModel(private val graph: AppGraph) : ViewModel() {
     }
 
     private fun onError(t: Throwable) {
-        _state.update { if (it.error == null) it.copy(error = t.message ?: "Sin conexión") else it }
+        _state.update { if (it.error == null) it.copy(error = t.message ?: Strings.get(R.string.home_error_offline)) else it }
     }
 }

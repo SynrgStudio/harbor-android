@@ -123,7 +123,7 @@ class ProgressRepository(private val store: JsonStore<ProgressData>) {
     fun save(entry: ProgressEntry) = store.update { it.copy(entries = it.entries + (entry.key to entry)) }
 
     /**
-     * Takes a title out of "Seguir viendo" without forgetting what was watched: unfinished entries go
+     * Takes a title out of "Continue watching" without forgetting what was watched: unfinished entries go
      * back to the start (finished episodes keep their mark), like Stremio's "remove from continue watching".
      */
     fun dismiss(type: MediaType, id: Int) = store.update { data ->

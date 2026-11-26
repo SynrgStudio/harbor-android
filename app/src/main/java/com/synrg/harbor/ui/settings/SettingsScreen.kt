@@ -45,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,6 +55,8 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.synrg.harbor.BuildConfig
+import com.synrg.harbor.R
+import com.synrg.harbor.core.Strings
 import com.synrg.harbor.episodes.EpisodeAlerts
 import com.synrg.harbor.episodes.EpisodeCheckJob
 import com.synrg.harbor.data.AddonEntry
@@ -73,15 +76,24 @@ fun SettingsScreen(bottomPadding: Dp) {
     val settings by graph.settings.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     fun toast(msg: String) = Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+    // Read here: the toasts below are shown from click handlers and coroutines, outside composition.
+    val syncFailed = stringResource(R.string.settings_sync_failed)
+    val signedIn = stringResource(R.string.settings_signed_in)
+    val signInFailed = stringResource(R.string.settings_sign_in_failed)
+    val addonInvalid = stringResource(R.string.settings_addon_invalid)
+    val keyCleared = stringResource(R.string.settings_key_cleared)
+    val keySaved = stringResource(R.string.settings_key_saved)
+    val upToDate = stringResource(R.string.settings_up_to_date)
+    val checkFailed = stringResource(R.string.settings_check_failed)
 
     Column(
         Modifier.fillMaxSize().background(HarborColors.Bg).statusBarsPadding().verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp).padding(bottom = bottomPadding + 32.dp),
     ) {
-        Text("Ajustes", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 8.dp))
+        Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 8.dp))
 
         // Stremio account
-        Section("Cuenta de Stremio", "Trae tus addons y mantiene “Seguir viendo” y “Mi lista” iguales en Stremio, Harbor de escritorio y acá.") {
+        Section(stringResource(R.string.settings_stremio_title), stringResource(R.string.settings_stremio_subtitle)) {
             val email = settings.stremioEmail
             if (email != null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -92,7 +104,7 @@ fun SettingsScreen(bottomPadding: Dp) {
                 Spacer(Modifier.height(12.dp))
                 var syncing by remember { mutableStateOf(false) }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PrimaryButton(if (syncing) "Sincronizando…" else "Sincronizar", HIcons.Refresh, enabled = !syncing, onClick = {
+                    PrimaryButton(stringResource(if (syncing) R.string.settings_syncing else R.string.settings_sync), HIcons.Refresh, enabled = !syncing, onClick = {
                         syncing = true
                         scope.launch {
                             runCatching {
@@ -100,41 +112,41 @@ fun SettingsScreen(bottomPadding: Dp) {
                                 addons to graph.sync.pull()
                             }
                                 .onSuccess { (addons, lib) -> toast(syncSummary(addons, lib.continueWatching, lib.added)) }
-                                .onFailure { toast(it.message ?: "No se pudo sincronizar") }
+                                .onFailure { toast(it.message ?: syncFailed) }
                             syncing = false
                         }
                     }, modifier = Modifier.weight(1f))
-                    GlassButton("Salir", null, onClick = { graph.stremio.logout() })
+                    GlassButton(stringResource(R.string.settings_sign_out), null, onClick = { graph.stremio.logout() })
                 }
             } else {
                 var user by remember { mutableStateOf("") }
                 var pass by remember { mutableStateOf("") }
                 var busy by remember { mutableStateOf(false) }
-                Field(user, { user = it }, "Email", KeyboardType.Email)
+                Field(user, { user = it }, stringResource(R.string.settings_email), KeyboardType.Email)
                 Spacer(Modifier.height(8.dp))
-                Field(pass, { pass = it }, "Contraseña", KeyboardType.Password, secret = true)
+                Field(pass, { pass = it }, stringResource(R.string.settings_password), KeyboardType.Password, secret = true)
                 Spacer(Modifier.height(12.dp))
-                PrimaryButton(if (busy) "Conectando…" else "Conectar", null, enabled = !busy && user.isNotBlank() && pass.isNotBlank(), onClick = {
+                PrimaryButton(stringResource(if (busy) R.string.settings_signing_in else R.string.settings_sign_in), null, enabled = !busy && user.isNotBlank() && pass.isNotBlank(), onClick = {
                     busy = true
                     scope.launch {
                         runCatching {
                             graph.stremio.login(user, pass)
                             graph.sync.pull()
                         }
-                            .onSuccess { toast("Cuenta conectada"); pass = "" }
-                            .onFailure { toast(it.message ?: "No se pudo iniciar sesión") }
+                            .onSuccess { toast(signedIn); pass = "" }
+                            .onFailure { toast(it.message ?: signInFailed) }
                         busy = false
                     }
                 }, modifier = Modifier.fillMaxWidth())
                 Text(
-                    "La contraseña solo se usa para pedir la sesión; se guarda la clave de sesión, no la contraseña.",
+                    stringResource(R.string.settings_password_note),
                     style = MaterialTheme.typography.bodySmall, color = HarborColors.TextFaint, modifier = Modifier.padding(top = 8.dp),
                 )
             }
         }
 
         // Addons
-        Section("Addons de fuentes", "Se consultan todos a la vez; cada uno aparece en cuanto responde.") {
+        Section(stringResource(R.string.settings_addons_title), stringResource(R.string.settings_addons_subtitle)) {
             settings.addons.forEach { addon ->
                 AddonRow(
                     addon,
@@ -143,57 +155,70 @@ fun SettingsScreen(bottomPadding: Dp) {
                 )
             }
             if (settings.addons.isEmpty()) {
-                Text("No hay addons. Conectá tu cuenta o pegá la URL de uno.", style = MaterialTheme.typography.bodySmall, color = HarborColors.TextDim)
+                Text(stringResource(R.string.settings_addons_empty), style = MaterialTheme.typography.bodySmall, color = HarborColors.TextDim)
             }
             Spacer(Modifier.height(10.dp))
             var url by remember { mutableStateOf("") }
             var adding by remember { mutableStateOf(false) }
-            Field(url, { url = it }, "URL del addon (manifest.json o stremio://)", KeyboardType.Uri)
+            Field(url, { url = it }, stringResource(R.string.settings_addon_url), KeyboardType.Uri)
             Spacer(Modifier.height(8.dp))
-            GlassButton(if (adding) "Agregando…" else "Agregar addon", HIcons.Add, onClick = {
+            GlassButton(stringResource(if (adding) R.string.settings_adding_addon else R.string.settings_add_addon), HIcons.Add, onClick = {
                 if (url.isBlank() || adding) return@GlassButton
                 adding = true
                 scope.launch {
                     runCatching { graph.addons.fetchManifest(url) }
                         .onSuccess { entry ->
                             graph.settings.update { s -> s.copy(addons = s.addons.filterNot { it.id == entry.id } + entry, addonsSeeded = true) }
-                            toast("${entry.name} agregado")
+                            toast(Strings.get(R.string.settings_addon_added, entry.name))
                             url = ""
                         }
-                        .onFailure { toast(it.message ?: "No es un addon válido") }
+                        .onFailure { toast(it.message ?: addonInvalid) }
                     adding = false
                 }
             }, modifier = Modifier.fillMaxWidth())
         }
 
         // Playback
-        Section("Reproducción", null) {
-            Label("Audio preferido")
-            Choice(listOf("" to "Original", "es" to "Español", "en" to "Inglés", "ja" to "Japonés"), settings.audioLanguage) { v ->
+        Section(stringResource(R.string.settings_playback_title), null) {
+            val spanish = stringResource(R.string.settings_lang_spanish)
+            val english = stringResource(R.string.settings_lang_english)
+            Label(stringResource(R.string.settings_preferred_audio))
+            Choice(
+                listOf("" to stringResource(R.string.settings_lang_original), "es" to spanish, "en" to english, "ja" to stringResource(R.string.settings_lang_japanese)),
+                settings.audioLanguage,
+            ) { v ->
                 graph.settings.update { it.copy(audioLanguage = v) }
             }
             Spacer(Modifier.height(14.dp))
-            Label("Subtítulos")
-            Choice(listOf("" to "No", "es" to "Español", "en" to "Inglés"), settings.subtitleLanguage) { v ->
+            Label(stringResource(R.string.settings_subtitles))
+            Choice(listOf("" to stringResource(R.string.settings_lang_off), "es" to spanish, "en" to english), settings.subtitleLanguage) { v ->
                 graph.settings.update { it.copy(subtitleLanguage = v) }
             }
             Spacer(Modifier.height(14.dp))
-            Label("Tamaño de subtítulos")
-            Choice(listOf("0.85" to "Chico", "1.0" to "Normal", "1.2" to "Grande", "1.45" to "Enorme"), settings.subtitleScale.toString()) { v ->
+            Label(stringResource(R.string.settings_subtitle_size))
+            Choice(
+                listOf(
+                    "0.85" to stringResource(R.string.settings_size_small),
+                    "1.0" to stringResource(R.string.settings_size_normal),
+                    "1.2" to stringResource(R.string.settings_size_large),
+                    "1.45" to stringResource(R.string.settings_size_huge),
+                ),
+                settings.subtitleScale.toString(),
+            ) { v ->
                 graph.settings.update { it.copy(subtitleScale = v.toFloat()) }
             }
             Spacer(Modifier.height(14.dp))
-            ToggleRow("Siguiente episodio automático", settings.autoplayNext) { on -> graph.settings.update { it.copy(autoplayNext = on) } }
-            ToggleRow("Preguntar antes de usar datos móviles", settings.askOnMobileData) { on -> graph.settings.update { it.copy(askOnMobileData = on) } }
+            ToggleRow(stringResource(R.string.settings_autoplay_next), settings.autoplayNext) { on -> graph.settings.update { it.copy(autoplayNext = on) } }
+            ToggleRow(stringResource(R.string.settings_ask_mobile_data), settings.askOnMobileData) { on -> graph.settings.update { it.copy(askOnMobileData = on) } }
         }
 
         // Downloads
-        Section("Descargas", "Para ver sin internet: tocá ⬇ en una fuente. Las ves en Mi lista → Descargas.") {
-            ToggleRow("Descargar solo con Wi-Fi", settings.downloadWifiOnly) { on -> graph.settings.update { it.copy(downloadWifiOnly = on) } }
+        Section(stringResource(R.string.settings_downloads_title), stringResource(R.string.settings_downloads_subtitle)) {
+            ToggleRow(stringResource(R.string.settings_download_wifi_only), settings.downloadWifiOnly) { on -> graph.settings.update { it.copy(downloadWifiOnly = on) } }
         }
 
         // New-episode alerts
-        Section("Avisos", "Cuando sale un episodio de una serie de tu lista o que estás viendo. También aparecen en Continuar.") {
+        Section(stringResource(R.string.settings_alerts_title), stringResource(R.string.settings_alerts_subtitle)) {
             var permitted by remember { mutableStateOf(EpisodeAlerts.permitted(context)) }
             LifecycleResumeEffect(Unit) {
                 permitted = EpisodeAlerts.permitted(context)
@@ -209,7 +234,7 @@ fun SettingsScreen(bottomPadding: Dp) {
             fun requestPermission() {
                 if (Build.VERSION.SDK_INT >= 33) ask.launch(Manifest.permission.POST_NOTIFICATIONS) else openSystemSettings()
             }
-            ToggleRow("Avisarme de episodios nuevos", settings.episodeAlerts) { on ->
+            ToggleRow(stringResource(R.string.settings_alerts_toggle), settings.episodeAlerts) { on ->
                 graph.settings.update { it.copy(episodeAlerts = on) }
                 if (on) graph.episodes.seed()
                 EpisodeCheckJob.schedule(context, on)
@@ -217,42 +242,49 @@ fun SettingsScreen(bottomPadding: Dp) {
             }
             if (settings.episodeAlerts && !permitted) {
                 Spacer(Modifier.height(8.dp))
-                Text("Android tiene bloqueados los avisos de Harbor.", style = MaterialTheme.typography.bodySmall, color = HarborColors.Warn)
+                Text(stringResource(R.string.settings_alerts_blocked), style = MaterialTheme.typography.bodySmall, color = HarborColors.Warn)
                 Spacer(Modifier.height(8.dp))
-                GlassButton("Permitir avisos", HIcons.Bell, onClick = ::requestPermission, modifier = Modifier.fillMaxWidth())
+                GlassButton(stringResource(R.string.settings_alerts_allow), HIcons.Bell, onClick = ::requestPermission, modifier = Modifier.fillMaxWidth())
             }
         }
 
         // Metadata
-        Section("Fichas y portadas", "Vienen de TMDB a través de su addon, sin clave. Con una clave propia de TMDB se suman recomendaciones y calificaciones por edad.") {
-            Label("Idioma")
-            Choice(listOf("es-MX" to "Español (Latam)", "es-ES" to "Español (España)", "en-US" to "Inglés"), settings.language) { v ->
+        Section(stringResource(R.string.settings_metadata_title), stringResource(R.string.settings_metadata_subtitle)) {
+            Label(stringResource(R.string.settings_language))
+            Choice(
+                listOf(
+                    "es-MX" to stringResource(R.string.settings_lang_spanish_latam),
+                    "es-ES" to stringResource(R.string.settings_lang_spanish_spain),
+                    "en-US" to stringResource(R.string.settings_lang_english),
+                ),
+                settings.language,
+            ) { v ->
                 graph.settings.update { it.copy(language = v) }
             }
             Spacer(Modifier.height(14.dp))
             var key by remember { mutableStateOf(settings.tmdbKey) }
-            Field(key, { key = it }, "Clave de TMDB (opcional)", KeyboardType.Ascii, secret = true)
+            Field(key, { key = it }, stringResource(R.string.settings_tmdb_key), KeyboardType.Ascii, secret = true)
             Spacer(Modifier.height(8.dp))
-            GlassButton("Guardar clave", HIcons.Check, onClick = {
+            GlassButton(stringResource(R.string.settings_save_key), HIcons.Check, onClick = {
                 graph.settings.update { it.copy(tmdbKey = key.trim()) }
-                toast(if (key.isBlank()) "Usando TMDB sin clave" else "Clave guardada")
+                toast(if (key.isBlank()) keyCleared else keySaved)
             }, modifier = Modifier.fillMaxWidth())
         }
 
         if (BuildConfig.SELF_UPDATE) {
-            Section("Actualizaciones", "Tenés la versión ${BuildConfig.VERSION_NAME}. Las nuevas salen en GitHub y se instalan encima, sin perder nada.") {
+            Section(stringResource(R.string.settings_updates_title), stringResource(R.string.settings_updates_subtitle, BuildConfig.VERSION_NAME)) {
                 val update by graph.updater.state.collectAsStateWithLifecycle()
-                ToggleRow("Avisar cuando haya una versión nueva", settings.checkUpdates) { on -> graph.settings.update { it.copy(checkUpdates = on) } }
+                ToggleRow(stringResource(R.string.settings_updates_toggle), settings.checkUpdates) { on -> graph.settings.update { it.copy(checkUpdates = on) } }
                 Spacer(Modifier.height(12.dp))
                 if (update is UpdateState.Idle) {
                     var checking by remember { mutableStateOf(false) }
-                    GlassButton(if (checking) "Buscando…" else "Buscar ahora", HIcons.Refresh, onClick = {
+                    GlassButton(stringResource(if (checking) R.string.settings_checking else R.string.settings_check_now), HIcons.Refresh, onClick = {
                         if (!checking) {
                             checking = true
                             scope.launch {
                                 runCatching { graph.updater.check() }
-                                    .onSuccess { if (it == null) toast("Ya tenés la última versión") }
-                                    .onFailure { toast(it.message ?: "No se pudo consultar GitHub") }
+                                    .onSuccess { if (it == null) toast(upToDate) }
+                                    .onFailure { toast(it.message ?: checkFailed) }
                                 checking = false
                             }
                         }
@@ -264,7 +296,7 @@ fun SettingsScreen(bottomPadding: Dp) {
         }
 
         Text(
-            "Harbor para Android ${BuildConfig.VERSION_NAME}",
+            stringResource(R.string.settings_version_footer, BuildConfig.VERSION_NAME),
             style = MaterialTheme.typography.bodySmall,
             color = HarborColors.TextFaint,
             modifier = Modifier.padding(top = 24.dp).align(Alignment.CenterHorizontally),
@@ -273,9 +305,9 @@ fun SettingsScreen(bottomPadding: Dp) {
 }
 
 private fun syncSummary(addons: Int, continueWatching: Int, added: Int): String = buildList {
-    add("$addons addons")
-    if (continueWatching > 0) add("$continueWatching en Seguir viendo")
-    if (added > 0) add("$added nuevos en Mi lista")
+    add(Strings.plural(R.plurals.settings_sync_addons, addons, addons))
+    if (continueWatching > 0) add(Strings.get(R.string.settings_sync_continue_watching, continueWatching))
+    if (added > 0) add(Strings.plural(R.plurals.settings_sync_added, added, added))
 }.joinToString(" · ")
 
 @Composable
@@ -356,14 +388,16 @@ private fun AddonRow(addon: AddonEntry, onToggle: (Boolean) -> Unit, onRemove: (
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
+            val streams = stringResource(R.string.settings_addon_streams)
+            val subtitles = stringResource(R.string.settings_addon_subtitles)
             Text(addon.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
-                addon.resources.joinToString(" · ") { if (it.name == "stream") "fuentes" else if (it.name == "subtitles") "subtítulos" else it.name },
+                addon.resources.joinToString(" · ") { if (it.name == "stream") streams else if (it.name == "subtitles") subtitles else it.name },
                 style = MaterialTheme.typography.bodySmall, color = HarborColors.TextFaint, maxLines = 1,
             )
         }
         Icon(
-            HIcons.Delete, "Quitar", tint = HarborColors.TextFaint,
+            HIcons.Delete, stringResource(R.string.common_remove), tint = HarborColors.TextFaint,
             modifier = Modifier.size(36.dp).clip(CircleShape).clickable(onClick = onRemove).padding(8.dp),
         )
         Switch(addon.enabled, onToggle, colors = SwitchDefaults.colors(checkedTrackColor = HarborColors.Accent, checkedThumbColor = HarborColors.OnAccent))

@@ -39,11 +39,14 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.synrg.harbor.R
 import com.synrg.harbor.data.Img
 import com.synrg.harbor.downloads.DownloadItem
 import com.synrg.harbor.downloads.DownloadSpeed
@@ -65,14 +68,14 @@ fun DownloadsScreen(bottomPadding: Dp, onBack: () -> Unit, onPlay: (DownloadItem
 
     Column(Modifier.fillMaxSize().background(HarborColors.Bg).statusBarsPadding()) {
         Row(Modifier.padding(start = 12.dp, top = 8.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            RoundIconButton(HIcons.Back, "Volver", onBack)
+            RoundIconButton(HIcons.Back, stringResource(R.string.downloads_back), onBack)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("Descargas", style = MaterialTheme.typography.headlineSmall)
+                Text(stringResource(R.string.downloads_title), style = MaterialTheme.typography.headlineSmall)
                 val used = items.sumOf { it.localFile?.length() ?: 0L }
                 val free = remember(items.size) { runCatching { StatFs(graph.downloads.dir.path).availableBytes }.getOrDefault(0L) }
                 Text(
-                    "Ocupan ${formatBytes(used)} · quedan ${formatBytes(free)} libres",
+                    stringResource(R.string.downloads_storage, formatBytes(used), formatBytes(free)),
                     style = MaterialTheme.typography.bodySmall,
                     color = HarborColors.TextDim,
                 )
@@ -80,8 +83,8 @@ fun DownloadsScreen(bottomPadding: Dp, onBack: () -> Unit, onPlay: (DownloadItem
         }
         if (items.isEmpty()) {
             MessageBlock(
-                "No hay descargas",
-                "En la lista de fuentes de una película o episodio, tocá ⬇ para guardarlo y verlo sin internet.",
+                stringResource(R.string.downloads_empty_title),
+                stringResource(R.string.downloads_empty_text),
                 modifier = Modifier.padding(top = 60.dp),
             )
             return@Column
@@ -144,7 +147,7 @@ private fun DownloadRow(
             Text(item.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (item.season != null && item.episode != null) {
                 Text(
-                    "T${item.season} · E${item.episode}" + (item.episodeTitle?.let { " — $it" } ?: ""),
+                    stringResource(R.string.downloads_episode_label, item.season, item.episode) + (item.episodeTitle?.let { " — $it" } ?: ""),
                     style = MaterialTheme.typography.bodySmall,
                     color = HarborColors.TextDim,
                     maxLines = 1,
@@ -166,25 +169,25 @@ private fun DownloadRow(
         }
         Box {
             Icon(
-                HIcons.MoreVert, "Opciones", tint = HarborColors.TextDim,
+                HIcons.MoreVert, stringResource(R.string.downloads_options), tint = HarborColors.TextDim,
                 modifier = Modifier.size(40.dp).clip(CircleShape).clickable { menu = true }.padding(9.dp),
             )
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = HarborColors.SurfaceHigh) {
                 when (item.status) {
                     DownloadStatus.Queued, DownloadStatus.Downloading, DownloadStatus.WaitingWifi -> DropdownMenuItem(
-                        text = { Text("Pausar") },
+                        text = { Text(stringResource(R.string.downloads_pause)) },
                         leadingIcon = { Icon(HIcons.Pause, null, modifier = Modifier.size(20.dp)) },
                         onClick = { menu = false; onPause() },
                     )
                     DownloadStatus.Paused, DownloadStatus.Failed -> DropdownMenuItem(
-                        text = { Text(if (item.status == DownloadStatus.Failed) "Reintentar" else "Reanudar") },
+                        text = { Text(stringResource(if (item.status == DownloadStatus.Failed) R.string.common_retry else R.string.downloads_resume)) },
                         leadingIcon = { Icon(HIcons.Download, null, modifier = Modifier.size(20.dp)) },
                         onClick = { menu = false; onResume() },
                     )
                     DownloadStatus.Done -> {}
                 }
                 DropdownMenuItem(
-                    text = { Text(if (done) "Borrar descarga" else "Cancelar descarga") },
+                    text = { Text(stringResource(if (done) R.string.downloads_delete else R.string.downloads_cancel)) },
                     leadingIcon = { Icon(HIcons.Delete, null, modifier = Modifier.size(20.dp)) },
                     onClick = { menu = false; onRemove() },
                 )
@@ -193,19 +196,20 @@ private fun DownloadRow(
     }
 }
 
+@Composable
 private fun statusLine(item: DownloadItem, speed: DownloadSpeed?): String {
-    val sizes = if (item.total > 0) "${formatBytes(item.bytes)} de ${formatBytes(item.total)}" else null
+    val sizes = if (item.total > 0) stringResource(R.string.downloads_size_of, formatBytes(item.bytes), formatBytes(item.total)) else null
     return when (item.status) {
-        DownloadStatus.Done -> listOfNotNull("Descargado", item.localFile?.length()?.let(::formatBytes)).joinToString(" · ")
+        DownloadStatus.Done -> listOfNotNull(stringResource(R.string.downloads_downloaded), item.localFile?.length()?.let(::formatBytes)).joinToString(" · ")
         DownloadStatus.Downloading -> listOfNotNull(
             "${(item.fraction * 100).toInt()}%",
             speed?.bps?.takeIf { it > 0 }?.let { formatBytes(it) + "/s" },
-            speed?.peers?.takeIf { it > 0 }?.let { "$it pares" },
+            speed?.peers?.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.downloads_peers, it, it) },
             sizes,
         ).joinToString(" · ")
-        DownloadStatus.Queued -> "En espera" + (sizes?.let { " · $it" } ?: "")
-        DownloadStatus.WaitingWifi -> "Esperando Wi-Fi" + (sizes?.let { " · $it" } ?: "")
-        DownloadStatus.Paused -> "En pausa" + (sizes?.let { " · $it" } ?: "")
-        DownloadStatus.Failed -> item.error ?: "No se pudo descargar"
+        DownloadStatus.Queued -> stringResource(R.string.downloads_queued) + (sizes?.let { " · $it" } ?: "")
+        DownloadStatus.WaitingWifi -> stringResource(R.string.downloads_waiting_wifi) + (sizes?.let { " · $it" } ?: "")
+        DownloadStatus.Paused -> stringResource(R.string.downloads_paused) + (sizes?.let { " · $it" } ?: "")
+        DownloadStatus.Failed -> item.error ?: stringResource(R.string.downloads_failed)
     }
 }

@@ -37,7 +37,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * Keeps "Seguir viendo" and "Mi lista" in step with the Stremio account's library, the same one
+ * Keeps "Continue watching" and "My list" in step with the Stremio account's library, the same one
  * Stremio and Harbor desktop use. Stremio keys titles by IMDb id and keeps one playback state per
  * title (the video in progress and its offset); a library item that is not "removed" is in the list,
  * and a "temp" one exists only because it was watched.
@@ -191,7 +191,7 @@ class StremioSync(
         job.start()
     }
 
-    /** Removed from "Seguir viendo": back to 0 in the account too, which is what Stremio does. */
+    /** Removed from "Continue watching": back to 0 in the account too, which is what Stremio does. */
     fun dismissed(entry: ProgressEntry) {
         if (!signedIn) return
         val imdb = entry.imdbId ?: return

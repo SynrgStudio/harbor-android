@@ -3,7 +3,9 @@ package com.synrg.harbor.ui.detail
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.synrg.harbor.R
 import com.synrg.harbor.core.AppGraph
+import com.synrg.harbor.core.Strings
 import com.synrg.harbor.data.Details
 import com.synrg.harbor.data.Episode
 import com.synrg.harbor.data.MediaType
@@ -166,7 +168,7 @@ class DetailViewModel(
                         playMain()
                     }
                 }
-                .onFailure { e -> _state.update { it.copy(error = e.message ?: "Sin conexión", details = null, partial = false) } }
+                .onFailure { e -> _state.update { it.copy(error = e.message ?: Strings.get(R.string.detail_no_connection), details = null, partial = false) } }
         }
     }
 
@@ -201,7 +203,7 @@ class DetailViewModel(
         poster = details.item.posterPath, backdrop = details.item.backdropPath, runtimeMin = details.runtime,
     )
 
-    /** "Visto" on episodes (one, or a whole season): here and in the Stremio account. */
+    /** "Watched" on episodes (one, or a whole season): here and in the Stremio account. */
     fun setEpisodesWatched(episodes: List<Episode>, watched: Boolean) {
         val details = _state.value.details ?: return
         val targets = episodes.filter { it.released }
@@ -257,12 +259,12 @@ class DetailViewModel(
         }
     }
 
-    /** "Fuentes": the sources list for what the big button would play, to switch to another one. */
+    /** "Streams": the sources list for what the big button would play, to switch to another one. */
     fun chooseSource() {
         viewModelScope.launch { mainTarget()?.let(::openStreams) }
     }
 
-    /** True when the big button resumes directly, so the screen also offers "Fuentes". */
+    /** True when the big button resumes directly, so the screen also offers "Streams". */
     fun resumesDirectly(progress: Map<String, ProgressEntry>): Boolean {
         val latest = progress.values.maxByOrNull { it.updatedAt } ?: return false
         val saved = latest.lastStream ?: return false
@@ -302,13 +304,14 @@ class DetailViewModel(
     fun openEpisode(ep: Episode) = openStreams(StreamTarget(ep.season, ep.number, ep.name, ep.stillPath))
 
     fun mainButtonLabel(progress: Map<String, ProgressEntry>): String {
-        val latest = progress.values.maxByOrNull { it.updatedAt } ?: return "Ver ahora"
+        val latest = progress.values.maxByOrNull { it.updatedAt } ?: return Strings.get(R.string.detail_play_now)
         return when {
-            type == MediaType.Movie && !latest.finished -> "Continuar · quedan ${latest.remainingMin} min"
-            type == MediaType.Movie -> "Ver de nuevo"
-            latest.season != null && !latest.finished -> "Continuar T${latest.season}:E${latest.episode}"
-            latest.season != null -> "Siguiente episodio"
-            else -> "Ver ahora"
+            type == MediaType.Movie && !latest.finished -> Strings.get(R.string.detail_resume_movie, latest.remainingMin)
+            type == MediaType.Movie -> Strings.get(R.string.detail_watch_again)
+            latest.season != null && !latest.finished ->
+                Strings.get(R.string.detail_resume_episode, Strings.get(R.string.common_episode_code, latest.season, latest.episode ?: 0))
+            latest.season != null -> Strings.get(R.string.detail_next_episode)
+            else -> Strings.get(R.string.detail_play_now)
         }
     }
 
@@ -319,7 +322,7 @@ class DetailViewModel(
         val resume = progress.value[key]
         val imdb = details.imdbId
         if (imdb == null) {
-            _streams.value = StreamsUi(target, emptyList(), resume, error = "Este título no tiene ID de IMDb, así que los addons no pueden buscarlo.")
+            _streams.value = StreamsUi(target, emptyList(), resume, error = Strings.get(R.string.streams_error_no_imdb))
             return
         }
         _streams.value = StreamsUi(target, emptyList(), resume)
@@ -334,7 +337,7 @@ class DetailViewModel(
                     ui.copy(groups = groups)
                 }
             }
-            _streams.update { ui -> if (ui != null && ui.groups.isEmpty()) ui.copy(error = "No tenés addons de fuentes activos. Agregalos en Ajustes.") else ui }
+            _streams.update { ui -> if (ui != null && ui.groups.isEmpty()) ui.copy(error = Strings.get(R.string.streams_error_no_addons)) else ui }
         }
     }
 

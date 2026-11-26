@@ -30,11 +30,11 @@ object Shortcuts {
     suspend fun update(context: Context, entries: List<ProgressEntry>) {
         val max = ShortcutManagerCompat.getMaxShortcutCountPerActivity(context).coerceIn(0, MAX)
         val shortcuts = entries.take(max).mapIndexed { rank, e ->
-            val episode = if (e.season != null && e.episode != null) " T${e.season}E${e.episode}" else ""
+            val episode = if (e.season != null && e.episode != null) " " + Strings.get(R.string.common_episode_code, e.season, e.episode) else ""
             ShortcutInfoCompat.Builder(context, "resume:${e.key}")
-                // Short: the title without its subtitle ("Iron man - El hombre de hierro" -> "Iron man").
+                // Short: the title without its subtitle ("Iron Man - Armored Adventures" -> "Iron Man").
                 .setShortLabel(e.title.substringBefore(" - ").substringBefore(": ").take(25))
-                .setLongLabel("Seguir: ${e.title}$episode".take(45))
+                .setLongLabel(Strings.get(R.string.app_shortcut_long, e.title + episode).take(45))
                 .setIcon(icon(context, e))
                 .setIntent(
                     Intent(context, MainActivity::class.java)

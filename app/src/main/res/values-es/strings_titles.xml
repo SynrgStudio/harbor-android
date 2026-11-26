@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Title page (details) -->
+    <string name="detail_more_like_this">Más como esta</string>
+    <string name="detail_error_title">No se pudo abrir</string>
+    <string name="detail_no_connection">Sin conexión</string>
+    <string name="detail_back">Volver</string>
+    <string name="detail_downloading_toast">Descargando… lo ves en Mi lista → Descargas</string>
+    <string name="detail_runtime_hm">%1$d h %2$d min</string>
+    <string name="detail_runtime_min">%1$d min</string>
+    <plurals name="detail_seasons">
+        <item quantity="one">%1$d temporada</item>
+        <item quantity="other">%1$d temporadas</item>
+    </plurals>
+    <string name="detail_streams">Fuentes</string>
+    <string name="detail_in_list">En mi lista</string>
+    <string name="detail_add_to_list">Agregar a mi lista</string>
+    <string name="detail_alerts_off">No avisarme de episodios nuevos</string>
+    <string name="detail_alerts_on">Avisarme de episodios nuevos</string>
+    <string name="detail_airs_on">Sale el %1$s</string>
+    <string name="detail_cast">Reparto</string>
+    <string name="detail_play_now">Ver ahora</string>
+    <string name="detail_resume_movie">Continuar · quedan %1$d min</string>
+    <string name="detail_resume_episode">Continuar %1$s</string>
+    <string name="detail_watch_again">Ver de nuevo</string>
+    <string name="detail_next_episode">Siguiente episodio</string>
+    <string name="detail_download_done_movie">Descargada · se ve sin internet</string>
+    <string name="detail_download_done">Descargado</string>
+    <string name="detail_download_progress">Descargando %1$d%%</string>
+    <string name="detail_download_queued">Descarga en espera</string>
+    <string name="detail_download_waiting_wifi">Descarga esperando Wi-Fi</string>
+    <string name="detail_download_paused">Descarga en pausa</string>
+    <string name="detail_download_failed">Descarga fallida</string>
+
+    <!-- Watched marks -->
+    <string name="watched_movie_done">Vista</string>
+    <string name="watched_movie_mark">Marcar vista</string>
+    <string name="watched_season_done">Temporada vista</string>
+    <string name="watched_season_mark">Marcar temporada</string>
+    <string name="watched_episode_done">Visto</string>
+    <string name="watched_mark">Marcar como visto</string>
+    <string name="watched_unmark">Marcar como no visto</string>
+    <string name="watched_mark_episode">Marcar episodio como visto</string>
+    <string name="watched_mark_movie">Marcar como vista</string>
+
+    <!-- Streams sheet -->
+    <string name="streams_filter_all">Todas</string>
+    <string name="streams_filter_other">Otras</string>
+    <string name="streams_pick">Elegí una fuente</string>
+    <string name="streams_no_response">Sin respuesta</string>
+    <plurals name="streams_count">
+        <item quantity="one">%1$d fuente</item>
+        <item quantity="other">%1$d fuentes</item>
+    </plurals>
+    <string name="streams_resume_same">Seguir con la misma fuente</string>
+    <string name="streams_from_min">desde el min %1$d</string>
+    <string name="streams_play_download">Ver la descarga</string>
+    <string name="streams_download_offline">Está en el teléfono: no gasta datos ni necesita internet</string>
+    <string name="streams_cached">⚡ Caché</string>
+    <plurals name="streams_seeds">
+        <item quantity="one">%1$d seeds</item>
+        <item quantity="other">%1$d seeds</item>
+    </plurals>
+    <string name="streams_torrent_no_engine">torrent: falta el motor</string>
+    <string name="streams_download">Descargar</string>
+    <string name="streams_fallback_title">Fuente %1$d</string>
+    <string name="streams_error_no_imdb">Este título no tiene ID de IMDb, así que los addons no pueden buscarlo.</string>
+    <string name="streams_error_no_addons">No tenés addons de fuentes activos. Agregalos en Ajustes.</string>
+
+    <!-- Continue watching -->
+    <string name="continue_title">Seguir viendo</string>
+    <string name="continue_empty_title">Nada a medio ver</string>
+    <string name="continue_empty_text">Lo que empieces a ver aparece acá, también lo que mires en Stremio o en Harbor de la PC. Los episodios nuevos de tus series también.</string>
+    <string name="continue_nothing_now">Nada a medio ver por ahora.</string>
+    <string name="continue_coming_soon">Próximamente</string>
+    <string name="continue_new_badge">NUEVO</string>
+    <string name="continue_episode_label">T%1$d · E%2$d</string>
+    <string name="continue_remaining">Quedan %1$d min</string>
+    <string name="continue_almost_done">Casi terminado</string>
+    <string name="continue_options">Opciones</string>
+    <string name="continue_open_details">Ver ficha</string>
+    <string name="continue_remove">Quitar de Seguir viendo</string>
+    <string name="continue_aired_today">Salió hoy</string>
+    <string name="continue_airs_today">Sale hoy</string>
+    <string name="continue_aired_yesterday">Salió ayer</string>
+    <string name="continue_airs_tomorrow">Sale mañana</string>
+    <string name="continue_aired_on">Salió el %1$s</string>
+    <string name="continue_airs_on">Sale el %1$s</string>
+    <string name="continue_just_now">recién</string>
+    <string name="continue_minutes_ago">hace %1$d min</string>
+    <string name="continue_hours_ago">hace %1$d h</string>
+    <string name="continue_yesterday">ayer</string>
+    <plurals name="continue_days_ago">
+        <item quantity="one">hace %1$d día</item>
+        <item quantity="other">hace %1$d días</item>
+    </plurals>
+
+    <!-- Home rows and metadata errors -->
+    <string name="meta_row_trending">Tendencias de la semana</string>
+    <string name="meta_row_popular_movies">Películas populares</string>
+    <string name="meta_row_popular_series">Series populares</string>
+    <string name="meta_row_new_releases">Estrenos</string>
+    <string name="meta_row_anime">Anime</string>
+    <string name="meta_row_new_series">Series nuevas</string>
+    <string name="meta_row_scifi">Ciencia ficción</string>
+    <string name="meta_row_comedy">Para reírse</string>
+    <string name="meta_row_horror">Terror</string>
+    <string name="meta_row_now_playing">Ahora en cines</string>
+    <string name="meta_row_top_movies">Películas mejor valoradas</string>
+    <string name="meta_row_top_series">Series aclamadas</string>
+    <string name="meta_row_airing">Series en emisión</string>
+    <string name="meta_error_server">El servidor de fichas respondió %1$d</string>
+    <string name="meta_error_not_found">No se encontró la ficha</string>
+    <string name="meta_error_incomplete">La ficha llegó incompleta</string>
+    <string name="meta_error_tmdb">TMDB respondió %1$d</string>
+</resources>

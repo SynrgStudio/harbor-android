@@ -23,6 +23,7 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import com.synrg.harbor.MainActivity
 import com.synrg.harbor.R
+import com.synrg.harbor.core.Strings
 import com.synrg.harbor.data.Img
 import com.synrg.harbor.graph
 import kotlinx.coroutines.Job
@@ -36,12 +37,12 @@ object EpisodeAlerts {
         (Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) &&
             NotificationManagerCompat.from(context).areNotificationsEnabled()
 
+    /** Creates the channel, or renames an existing one to the current language (importance stays as the user set it). */
     private fun ensureChannel(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
-        if (manager.getNotificationChannel(CHANNEL) != null) return
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL, "Episodios nuevos", NotificationManager.IMPORTANCE_DEFAULT).apply {
-                description = "Cuando sale un episodio de una serie de tu lista o que estás viendo"
+            NotificationChannel(CHANNEL, Strings.get(R.string.common_new_episodes), NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = Strings.get(R.string.alerts_channel_description)
             },
         )
     }
@@ -53,11 +54,11 @@ object EpisodeAlerts {
         episodes.groupBy { it.tmdbId }.forEach { (tmdbId, list) ->
             val sorted = list.sortedWith(compareBy({ it.season }, { it.episode }))
             val first = sorted.first()
-            val title = if (sorted.size == 1) "Nuevo episodio de ${first.show}" else "${sorted.size} episodios nuevos de ${first.show}"
+            val title = Strings.plural(R.plurals.alerts_new_episodes_title, sorted.size, sorted.size, first.show)
             val text = if (sorted.size == 1) {
-                "T${first.season} · E${first.episode}" + (first.name?.let { " — $it" } ?: "")
+                Strings.get(R.string.alerts_episode_label, first.season, first.episode) + (first.name?.let { " — $it" } ?: "")
             } else {
-                sorted.joinToString(", ") { "T${it.season}:E${it.episode}" }
+                sorted.joinToString(", ") { Strings.get(R.string.common_episode_code, it.season, it.episode) }
             }
             val open = PendingIntent.getActivity(
                 context, tmdbId,

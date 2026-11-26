@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Downloads screen and download errors -->
+    <string name="downloads_title">Descargas</string>
+    <string name="downloads_back">Volver</string>
+    <string name="downloads_storage">Ocupan %1$s · quedan %2$s libres</string>
+    <string name="downloads_empty_title">No hay descargas</string>
+    <string name="downloads_empty_text">En la lista de fuentes de una película o episodio, tocá ⬇ para guardarlo y verlo sin internet.</string>
+    <string name="downloads_episode_label">T%1$d · E%2$d</string>
+    <string name="downloads_options">Opciones</string>
+    <string name="downloads_pause">Pausar</string>
+    <string name="downloads_resume">Reanudar</string>
+    <string name="downloads_delete">Borrar descarga</string>
+    <string name="downloads_cancel">Cancelar descarga</string>
+    <string name="downloads_size_of">%1$s de %2$s</string>
+    <string name="downloads_downloaded">Descargado</string>
+    <plurals name="downloads_peers">
+        <item quantity="one">%1$d par</item>
+        <item quantity="other">%1$d pares</item>
+    </plurals>
+    <string name="downloads_queued">En espera</string>
+    <string name="downloads_waiting_wifi">Esperando Wi-Fi</string>
+    <string name="downloads_paused">En pausa</string>
+    <string name="downloads_failed">No se pudo descargar</string>
+    <string name="downloads_no_link">La fuente no tiene enlace</string>
+    <string name="downloads_stream_responded">La fuente respondió %1$d</string>
+
+    <!-- Download notifications -->
+    <string name="notif_channel_progress">Descargas en curso</string>
+    <string name="notif_channel_done">Descargas listas</string>
+    <string name="notif_downloading">Descargando %1$s</string>
+    <string name="notif_queued">%1$d en espera</string>
+    <string name="notif_waiting_title">Descargas en espera</string>
+    <string name="notif_waiting_text">Siguen cuando te conectes a Wi-Fi</string>
+    <string name="notif_preparing">Preparando descargas…</string>
+    <string name="notif_ready_title">Listo para ver sin internet</string>
+    <plurals name="notif_downloads_count">
+        <item quantity="one">%1$d descarga</item>
+        <item quantity="other">%1$d descargas</item>
+    </plurals>
+
+    <!-- New episode notifications -->
+    <string name="alerts_channel_description">Cuando sale un episodio de una serie de tu lista o que estás viendo</string>
+    <plurals name="alerts_new_episodes_title">
+        <item quantity="one">Nuevo episodio de %2$s</item>
+        <item quantity="other">%1$d episodios nuevos de %2$s</item>
+    </plurals>
+    <string name="alerts_episode_label">T%1$d · E%2$d</string>
+
+    <!-- Torrent engine errors (shown in the player and in failed downloads) -->
+    <string name="torrent_engine_missing">Esta versión no trae el motor de torrents</string>
+    <string name="torrent_engine_not_started">No arrancó el motor de torrents: %1$s</string>
+    <string name="torrent_unknown_error">error desconocido</string>
+    <string name="torrent_engine_error">Motor de torrents: %1$s</string>
+    <string name="torrent_no_hash">La fuente no tiene hash de torrent</string>
+    <string name="torrent_not_returned">El motor no devolvió el torrent</string>
+
+    <!-- Stremio account and addon errors -->
+    <string name="stremio_unexpected_response">Respuesta inesperada de Stremio</string>
+    <string name="stremio_not_signed_in">No hay sesión de Stremio</string>
+    <string name="stremio_no_session">Stremio no devolvió sesión</string>
+    <string name="stremio_addon_responded">El addon respondió %1$d</string>
+    <string name="stremio_no_response">Sin respuesta</string>
+</resources>

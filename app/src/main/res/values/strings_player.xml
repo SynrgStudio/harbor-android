@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Player screen -->
+    <string name="player_brightness">Brightness</string>
+    <string name="player_volume">Volume</string>
+    <string name="player_locked_hint">Screen locked · tap here to unlock</string>
+    <string name="player_next_episode">Next episode</string>
+    <string name="player_watch_now">Watch now</string>
+    <!-- Seconds left before the next episode starts on its own. -->
+    <string name="player_watch_now_countdown">Watch now · %1$d</string>
+    <!-- Torrent peers and download speed, e.g. "12 peers · 3.4 MB/s". -->
+    <plurals name="player_peers_speed">
+        <item quantity="one">%1$d peer · %2$s</item>
+        <item quantity="other">%1$d peers · %2$s</item>
+    </plurals>
+    <string name="player_finding_peers">Looking for peers…</string>
+    <string name="player_exit">Exit</string>
+    <string name="player_lock_screen">Lock screen</string>
+    <string name="player_audio_subtitles">Audio and subtitles</string>
+    <string name="player_resize">Adjust picture</string>
+    <string name="player_pip">Picture-in-picture</string>
+    <string name="player_pause">Pause</string>
+    <string name="player_play">Play</string>
+    <string name="player_skip_forward">Skip forward 10 seconds</string>
+    <string name="player_skip_back">Skip back 10 seconds</string>
+    <string name="player_next">Next</string>
+    <string name="player_data_warning_cellular">You\'re not on Wi-Fi</string>
+    <string name="player_data_warning_metered">This network has limited data</string>
+    <string name="player_data_warning_body">Watching this can use several GB of your data plan. Play anyway?</string>
+    <string name="player_play_anyway">Play anyway</string>
+    <string name="player_error_title">Couldn\'t play this</string>
+    <string name="player_other_stream">Another stream</string>
+    <!-- Episode line under the title: season and episode number, e.g. "S1 · E2". -->
+    <string name="player_episode_label">S%1$d · E%2$d</string>
+    <!-- Same, followed by the episode title. -->
+    <string name="player_episode_label_titled">S%1$d · E%2$d — %3$s</string>
+    <string name="player_connecting_torrent">Connecting to the torrent…</string>
+    <string name="player_loading">Loading…</string>
+    <string name="player_finding_next">Looking for the next episode…</string>
+    <string name="player_error_connection_lost">Lost the connection to the stream.</string>
+    <string name="player_error_stream_gone">This stream is no longer available (the link expired or is down).</string>
+    <string name="player_error_cant_decode">This phone can\'t decode this video. Try another stream.</string>
+    <string name="player_error_unsupported_format">Unsupported file format.</string>
+    <string name="player_error_cant_open">Couldn\'t open the stream</string>
+    <string name="player_error_no_link">This stream has no playable link</string>
+    <string name="player_error_no_more_episodes">No more episodes available.</string>
+
+    <!-- Sleep timer -->
+    <string name="sleep_timer">Sleep timer</string>
+    <string name="sleep_pausing_in_seconds">Pausing in %1$d s</string>
+    <string name="sleep_pausing_in_minutes">Pausing in %1$d min</string>
+    <string name="sleep_pausing_at_end">Pausing at the end</string>
+    <string name="sleep_hint">Fades the volume out, then pauses; after that the screen turns off on its own.</string>
+    <string name="sleep_off">Off</string>
+    <plurals name="sleep_minutes">
+        <item quantity="one">%1$d minute</item>
+        <item quantity="other">%1$d minutes</item>
+    </plurals>
+    <string name="sleep_one_hour">1 hour</string>
+    <!-- One hour plus some minutes, e.g. "1 h 30 min". -->
+    <string name="sleep_hour_and_minutes">1 h %1$d min</string>
+    <string name="sleep_end_of_episode">When this episode ends</string>
+    <string name="sleep_end_of_movie">When the movie ends</string>
+
+    <!-- Audio, subtitles and speed panel -->
+    <string name="tracks_audio">Audio</string>
+    <string name="tracks_subtitles">Subtitles</string>
+    <string name="tracks_speed">Speed</string>
+    <string name="tracks_audio_not_loaded">The audio tracks haven\'t loaded yet.</string>
+    <string name="tracks_speed_normal">Normal</string>
+    <string name="tracks_mono">Mono</string>
+    <string name="tracks_stereo">Stereo</string>
+    <string name="tracks_forced">Forced</string>
+    <!-- A track with no language or name. -->
+    <string name="tracks_generic">Track</string>
+
+    <!-- Subtitles -->
+    <string name="subs_off">Off</string>
+    <string name="subs_online">Online</string>
+    <string name="subs_none_online">No addon subtitles for this.</string>
+    <!-- Tag on a subtitle saved with a download. -->
+    <string name="subs_saved">saved</string>
+    <string name="subs_sync">Sync</string>
+    <string name="subs_no_offset">No adjustment</string>
+    <string name="subs_reset">Reset</string>
+    <string name="subs_sync_hint">If they show up before people speak, add; if they show up late, subtract.</string>
+    <string name="subs_language_unknown">Unknown</string>
+    <!-- Brazilian Portuguese: %1$s is the language name. -->
+    <string name="subs_language_brazil">%1$s (Brazil)</string>
+</resources>

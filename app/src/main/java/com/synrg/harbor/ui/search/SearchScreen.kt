@@ -35,12 +35,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.synrg.harbor.R
 import com.synrg.harbor.core.AppGraph
 import com.synrg.harbor.data.MediaItem
 import com.synrg.harbor.ui.components.PosterCard
@@ -92,7 +94,7 @@ fun SearchScreen(vm: SearchViewModel, bottomPadding: Dp, onOpen: (MediaItem) -> 
     val focus = LocalFocusManager.current
 
     Column(Modifier.fillMaxSize().background(HarborColors.Bg).statusBarsPadding()) {
-        Text("Buscar", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(start = 20.dp, top = 12.dp))
+        Text(stringResource(R.string.search_title), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(start = 20.dp, top = 12.dp))
         Spacer(Modifier.height(12.dp))
         Row(
             Modifier.padding(horizontal = 16.dp).fillMaxWidth().height(50.dp)
@@ -105,7 +107,7 @@ fun SearchScreen(vm: SearchViewModel, bottomPadding: Dp, onOpen: (MediaItem) -> 
             Spacer(Modifier.width(10.dp))
             Box(Modifier.weight(1f)) {
                 if (query.isEmpty()) {
-                    Text("Películas, series, anime…", style = MaterialTheme.typography.bodyLarge, color = HarborColors.TextFaint)
+                    Text(stringResource(R.string.search_hint), style = MaterialTheme.typography.bodyLarge, color = HarborColors.TextFaint)
                 }
                 BasicTextField(
                     value = query,
@@ -119,7 +121,7 @@ fun SearchScreen(vm: SearchViewModel, bottomPadding: Dp, onOpen: (MediaItem) -> 
                 )
             }
             if (query.isNotEmpty()) {
-                RoundIconButton(HIcons.Close, "Borrar", onClick = { vm.query.value = "" }, size = 36.dp)
+                RoundIconButton(HIcons.Close, stringResource(R.string.search_clear), onClick = { vm.query.value = "" }, size = 36.dp)
             }
         }
         LazyVerticalGrid(
@@ -132,10 +134,10 @@ fun SearchScreen(vm: SearchViewModel, bottomPadding: Dp, onOpen: (MediaItem) -> 
             item(span = { GridItemSpan(maxLineSpan) }, key = "header") {
                 Text(
                     when {
-                        state.suggestions -> "Tendencias"
-                        state.loading -> "Buscando…"
-                        state.results.isEmpty() -> "Sin resultados para “${state.query}”"
-                        else -> "Resultados"
+                        state.suggestions -> stringResource(R.string.search_trending)
+                        state.loading -> stringResource(R.string.search_searching)
+                        state.results.isEmpty() -> stringResource(R.string.search_no_results, state.query)
+                        else -> stringResource(R.string.search_results)
                     },
                     style = MaterialTheme.typography.titleMedium,
                     color = HarborColors.TextDim,

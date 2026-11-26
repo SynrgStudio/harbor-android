@@ -39,12 +39,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.synrg.harbor.R
 import com.synrg.harbor.data.Img
 import com.synrg.harbor.data.MediaItem
 import com.synrg.harbor.data.ProgressEntry
@@ -168,7 +170,7 @@ fun ContinueCard(entry: ProgressEntry, onClick: () -> Unit) {
                 Icon(HIcons.Play, null, tint = Color.White, modifier = Modifier.size(22.dp))
             }
             Text(
-                if (entry.remainingMin > 0) "Quedan ${entry.remainingMin} min" else "Casi terminado",
+                if (entry.remainingMin > 0) stringResource(R.string.home_minutes_left, entry.remainingMin) else stringResource(R.string.home_almost_done),
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White.copy(alpha = 0.9f),
                 modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 10.dp),
@@ -185,7 +187,7 @@ fun ContinueCard(entry: ProgressEntry, onClick: () -> Unit) {
         Text(entry.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (entry.season != null && entry.episode != null) {
             Text(
-                "T${entry.season} · E${entry.episode}" + (entry.episodeTitle?.let { "  $it" } ?: ""),
+                stringResource(R.string.common_episode_code, entry.season, entry.episode) + (entry.episodeTitle?.let { "  $it" } ?: ""),
                 style = MaterialTheme.typography.bodySmall,
                 color = HarborColors.TextDim,
                 maxLines = 1,

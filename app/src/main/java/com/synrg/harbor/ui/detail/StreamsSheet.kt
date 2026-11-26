@@ -1,5 +1,6 @@
 package com.synrg.harbor.ui.detail
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,8 +41,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.synrg.harbor.R
 import com.synrg.harbor.data.SavedStream
 import com.synrg.harbor.downloads.DownloadItem
 import com.synrg.harbor.graph
@@ -54,12 +58,13 @@ import com.synrg.harbor.ui.components.pressScale
 import com.synrg.harbor.ui.theme.HIcons
 import com.synrg.harbor.ui.theme.HarborColors
 
-private enum class QualityFilter(val label: String, val match: (Quality) -> Boolean) {
-    All("Todas", { true }),
-    UHD("4K", { it == Quality.UHD }),
-    FHD("1080p", { it == Quality.FHD }),
-    HD("720p", { it == Quality.HD }),
-    Other("Otras", { it == Quality.SD || it == Quality.Unknown }),
+/** The chips over the list: a translated label ([labelRes]) or a quality tag shown as it is ([tag]). */
+private enum class QualityFilter(@StringRes val labelRes: Int?, val tag: String?, val match: (Quality) -> Boolean) {
+    All(R.string.streams_filter_all, null, { true }),
+    UHD(null, "4K", { it == Quality.UHD }),
+    FHD(null, "1080p", { it == Quality.FHD }),
+    HD(null, "720p", { it == Quality.HD }),
+    Other(R.string.streams_filter_other, null, { it == Quality.SD || it == Quality.Unknown }),
 }
 
 @Composable
@@ -85,15 +90,18 @@ fun StreamsSheet(
         Column(Modifier.fillMaxWidth().fillMaxHeight(0.92f)) {
             Column(Modifier.padding(horizontal = 20.dp)) {
                 Text(title, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                val sub = ui.target.season?.let { s -> "Temporada $s · Episodio ${ui.target.episode}" + (ui.target.episodeTitle?.let { " — $it" } ?: "") }
-                Text(sub ?: "Elegí una fuente", style = MaterialTheme.typography.bodyMedium, color = HarborColors.TextDim, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                val sub = ui.target.season?.let { s ->
+                    stringResource(R.string.common_season_n, s) + " · " + stringResource(R.string.common_episode_n, ui.target.episode ?: 0) +
+                        (ui.target.episodeTitle?.let { " — $it" } ?: "")
+                }
+                Text(sub ?: stringResource(R.string.streams_pick), style = MaterialTheme.typography.bodyMedium, color = HarborColors.TextDim, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.height(14.dp))
             LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(QualityFilter.entries.toList()) { f ->
                     val active = f == filter
                     Text(
-                        f.label,
+                        f.labelRes?.let { stringResource(it) } ?: f.tag.orEmpty(),
                         style = MaterialTheme.typography.labelLarge,
                         color = if (active) HarborColors.OnAccent else HarborColors.Text,
                         modifier = Modifier.clip(RoundedCornerShape(16.dp))
@@ -147,10 +155,10 @@ private fun AddonHeader(group: AddonStreams, filter: QualityFilter) {
         Text(group.addon.name, style = MaterialTheme.typography.labelLarge, color = HarborColors.Text, modifier = Modifier.weight(1f))
         when (group) {
             is AddonStreams.Loading -> CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
-            is AddonStreams.Failed -> Text("Sin respuesta", style = MaterialTheme.typography.labelSmall, color = HarborColors.Warn)
+            is AddonStreams.Failed -> Text(stringResource(R.string.streams_no_response), style = MaterialTheme.typography.labelSmall, color = HarborColors.Warn)
             is AddonStreams.Loaded -> {
                 val n = group.streams.count { filter.match(it.quality) }
-                Text(if (n == 1) "1 fuente" else "$n fuentes", style = MaterialTheme.typography.labelSmall, color = HarborColors.TextFaint)
+                Text(pluralStringResource(R.plurals.streams_count, n, n), style = MaterialTheme.typography.labelSmall, color = HarborColors.TextFaint)
             }
         }
     }
@@ -171,9 +179,9 @@ private fun ResumeCard(saved: SavedStream, positionMs: Long, torrentsReady: Bool
         Icon(HIcons.Play, null, tint = HarborColors.Accent, modifier = Modifier.size(24.dp))
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text("Seguir con la misma fuente", style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.streams_resume_same), style = MaterialTheme.typography.titleSmall)
             Text(
-                listOfNotNull(saved.label?.takeIf { it.isNotBlank() }, saved.addonName, if (min > 0) "desde el min $min" else null).joinToString(" · "),
+                listOfNotNull(saved.label?.takeIf { it.isNotBlank() }, saved.addonName, if (min > 0) stringResource(R.string.streams_from_min, min) else null).joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
                 color = HarborColors.TextDim,
                 maxLines = 1,
@@ -196,8 +204,8 @@ private fun DownloadedCard(onClick: () -> Unit) {
         Icon(HIcons.DownloadDone, null, tint = HarborColors.Accent, modifier = Modifier.size(24.dp))
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text("Ver la descarga", style = MaterialTheme.typography.titleSmall)
-            Text("Está en el teléfono: no gasta datos ni necesita internet", style = MaterialTheme.typography.bodySmall, color = HarborColors.TextDim)
+            Text(stringResource(R.string.streams_play_download), style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.streams_download_offline), style = MaterialTheme.typography.bodySmall, color = HarborColors.TextDim)
         }
     }
 }
@@ -238,7 +246,7 @@ private fun StreamCard(option: StreamOption, enabled: Boolean, onClick: () -> Un
             Text(option.title, style = MaterialTheme.typography.bodyMedium, color = HarborColors.Text, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(6.dp))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                if (option.cached) Badge("⚡ Caché", color = Color(0x334ADE80), textColor = HarborColors.Good)
+                if (option.cached) Badge(stringResource(R.string.streams_cached), color = Color(0x334ADE80), textColor = HarborColors.Good)
                 option.tags.forEach { tag ->
                     when (tag) {
                         "CAM" -> Badge(tag, color = Color(0x33FB923C), textColor = HarborColors.Warn)
@@ -258,17 +266,17 @@ private fun StreamCard(option: StreamOption, enabled: Boolean, onClick: () -> Un
                 Spacer(Modifier.width(5.dp))
                 val meta = listOfNotNull(
                     option.sizeLabel,
-                    option.seeders?.let { "$it seeds" },
+                    option.seeders?.let { pluralStringResource(R.plurals.streams_seeds, it, it) },
                     option.source,
                     option.languages.joinToString(" ").takeIf { it.isNotBlank() },
-                    if (option.kind == StreamKind.Torrent && !enabled) "torrent: falta el motor" else null,
+                    if (option.kind == StreamKind.Torrent && !enabled) stringResource(R.string.streams_torrent_no_engine) else null,
                 ).joinToString("  ·  ")
                 Text(meta, style = MaterialTheme.typography.bodySmall, color = HarborColors.TextDim, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         if (onDownload != null) {
             Icon(
-                HIcons.Download, "Descargar",
+                HIcons.Download, stringResource(R.string.streams_download),
                 tint = HarborColors.TextDim,
                 modifier = Modifier.padding(start = 4.dp).size(40.dp).clip(RoundedCornerShape(20.dp)).clickable(onClick = onDownload).padding(9.dp),
             )

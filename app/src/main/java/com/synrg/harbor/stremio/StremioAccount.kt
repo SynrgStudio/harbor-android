@@ -1,5 +1,7 @@
 package com.synrg.harbor.stremio
 
+import com.synrg.harbor.R
+import com.synrg.harbor.core.Strings
 import com.synrg.harbor.core.await
 import com.synrg.harbor.data.AddonEntry
 import com.synrg.harbor.data.SettingsRepository
@@ -33,7 +35,7 @@ class StremioAccount(
     private val api = "https://api.strem.io/api"
 
     private suspend fun call(method: String, body: JsonObject): JsonObject =
-        callRaw(method, body) as? JsonObject ?: throw IOException("Respuesta inesperada de Stremio")
+        callRaw(method, body) as? JsonObject ?: throw IOException(Strings.get(R.string.stremio_unexpected_response))
 
     private suspend fun callRaw(method: String, body: JsonObject): JsonElement {
         val request = Request.Builder()
@@ -46,10 +48,10 @@ class StremioAccount(
             val message = (err as? JsonObject)?.get("message")?.jsonPrimitive?.contentOrNull ?: err.toString()
             throw IOException(message)
         }
-        return obj["result"] ?: throw IOException("Respuesta inesperada de Stremio")
+        return obj["result"] ?: throw IOException(Strings.get(R.string.stremio_unexpected_response))
     }
 
-    private fun requireAuth(): String = settings.current.stremioAuthKey ?: throw IOException("No hay sesión de Stremio")
+    private fun requireAuth(): String = settings.current.stremioAuthKey ?: throw IOException(Strings.get(R.string.stremio_not_signed_in))
 
     /** Library items ("libraryItem" collection): all of them, or just [ids]. */
     suspend fun libraryGet(ids: List<String> = emptyList()): List<JsonObject> {
@@ -88,7 +90,7 @@ class StremioAccount(
                 put("facebook", false)
             },
         )
-        val authKey = result["authKey"]?.jsonPrimitive?.contentOrNull ?: throw IOException("Stremio no devolvió sesión")
+        val authKey = result["authKey"]?.jsonPrimitive?.contentOrNull ?: throw IOException(Strings.get(R.string.stremio_no_session))
         settings.update { it.copy(stremioAuthKey = authKey, stremioEmail = email.trim()) }
         syncAddons()
     }

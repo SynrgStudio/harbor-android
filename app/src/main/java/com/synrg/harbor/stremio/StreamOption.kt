@@ -1,6 +1,8 @@
 package com.synrg.harbor.stremio
 
 import androidx.compose.runtime.Immutable
+import com.synrg.harbor.R
+import com.synrg.harbor.core.Strings
 import com.synrg.harbor.data.SavedStream
 import java.util.Locale
 
@@ -76,7 +78,7 @@ object StreamParser {
         val title = s.behaviorHints?.filename
             ?: bodyLines.firstOrNull { !emojiLine.containsMatchIn(it) }
             ?: s.name?.lines()?.joinToString(" ")?.trim()
-            ?: "Fuente ${index + 1}"
+            ?: Strings.get(R.string.streams_fallback_title, index + 1)
         val sizeLabel = s.behaviorHints?.videoSize?.takeIf { it > 0 }?.let(::formatBytes)
             ?: size.find(body)?.let { "${it.groupValues[1].replace(',', '.')} ${it.groupValues[2].uppercase(Locale.ROOT)}" }
         val sourceName = source.find(body)?.groupValues?.get(1)?.trim()?.takeIf { it.length in 2..40 }

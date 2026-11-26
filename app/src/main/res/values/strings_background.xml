@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Downloads screen and download errors -->
+    <string name="downloads_title">Downloads</string>
+    <string name="downloads_back">Back</string>
+    <!-- Space taken by downloads and space left on the device, e.g. "Using 3.2 GB · 20.1 GB free". -->
+    <string name="downloads_storage">Using %1$s · %2$s free</string>
+    <string name="downloads_empty_title">No downloads</string>
+    <string name="downloads_empty_text">In the streams list of a movie or episode, tap ⬇ to save it and watch offline.</string>
+    <!-- Season and episode of a download, e.g. "S1 · E2". -->
+    <string name="downloads_episode_label">S%1$d · E%2$d</string>
+    <string name="downloads_options">Options</string>
+    <string name="downloads_pause">Pause</string>
+    <string name="downloads_resume">Resume</string>
+    <string name="downloads_delete">Delete download</string>
+    <string name="downloads_cancel">Cancel download</string>
+    <!-- Downloaded size out of the total, e.g. "1.2 GB of 3.4 GB". -->
+    <string name="downloads_size_of">%1$s of %2$s</string>
+    <string name="downloads_downloaded">Downloaded</string>
+    <plurals name="downloads_peers">
+        <item quantity="one">%1$d peer</item>
+        <item quantity="other">%1$d peers</item>
+    </plurals>
+    <string name="downloads_queued">Queued</string>
+    <string name="downloads_waiting_wifi">Waiting for Wi-Fi</string>
+    <string name="downloads_paused">Paused</string>
+    <string name="downloads_failed">Couldn\'t download</string>
+    <string name="downloads_no_link">This stream has no link</string>
+    <!-- HTTP status code returned by the stream's server. -->
+    <string name="downloads_stream_responded">The stream responded with %1$d</string>
+
+    <!-- Download notifications -->
+    <string name="notif_channel_progress">Downloads in progress</string>
+    <string name="notif_channel_done">Finished downloads</string>
+    <!-- Title of the download being downloaded, e.g. "Downloading Dune S1:E2". -->
+    <string name="notif_downloading">Downloading %1$s</string>
+    <string name="notif_queued">%1$d queued</string>
+    <string name="notif_waiting_title">Downloads on hold</string>
+    <string name="notif_waiting_text">They\'ll continue when you connect to Wi-Fi</string>
+    <string name="notif_preparing">Preparing downloads…</string>
+    <string name="notif_ready_title">Ready to watch offline</string>
+    <plurals name="notif_downloads_count">
+        <item quantity="one">%1$d download</item>
+        <item quantity="other">%1$d downloads</item>
+    </plurals>
+
+    <!-- New episode notifications -->
+    <string name="alerts_channel_description">When an episode comes out for a series on your list or one you\'re watching</string>
+    <!-- %1$d is the number of episodes, %2$s the series name. -->
+    <plurals name="alerts_new_episodes_title">
+        <item quantity="one">New episode of %2$s</item>
+        <item quantity="other">%1$d new episodes of %2$s</item>
+    </plurals>
+    <!-- Season and episode of a new episode, e.g. "S1 · E2". -->
+    <string name="alerts_episode_label">S%1$d · E%2$d</string>
+
+    <!-- Torrent engine errors (shown in the player and in failed downloads) -->
+    <string name="torrent_engine_missing">This version doesn\'t include the torrent engine</string>
+    <string name="torrent_engine_not_started">The torrent engine didn\'t start: %1$s</string>
+    <string name="torrent_unknown_error">unknown error</string>
+    <string name="torrent_engine_error">Torrent engine: %1$s</string>
+    <string name="torrent_no_hash">This stream has no torrent hash</string>
+    <string name="torrent_not_returned">The engine didn\'t return the torrent</string>
+
+    <!-- Stremio account and addon errors -->
+    <string name="stremio_unexpected_response">Unexpected response from Stremio</string>
+    <string name="stremio_not_signed_in">Not signed in to Stremio</string>
+    <string name="stremio_no_session">Stremio didn\'t return a session</string>
+    <!-- HTTP status code returned by an addon. -->
+    <string name="stremio_addon_responded">The addon responded with %1$d</string>
+    <string name="stremio_no_response">No response</string>
+</resources>

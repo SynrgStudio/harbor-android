@@ -92,7 +92,7 @@ pub extern "system" fn Java_com_synrg_harbor_torrent_NativeEngine_start(
             -1
         }
         Err(_) => {
-            *LAST_ERROR.lock().unwrap() = Some("panic al iniciar el motor".to_string());
+            *LAST_ERROR.lock().unwrap() = Some("panic while starting the engine".to_string());
             -1
         }
     }

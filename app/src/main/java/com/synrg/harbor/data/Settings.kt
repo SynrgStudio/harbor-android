@@ -3,6 +3,7 @@ package com.synrg.harbor.data
 import com.synrg.harbor.core.JsonStore
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.Serializable
+import java.util.Locale
 
 @Serializable
 data class AddonResource(
@@ -38,22 +39,23 @@ data class AddonEntry(
 data class Settings(
     /** Optional personal TMDB key; without one, metadata comes from the keyless TMDB addon. */
     val tmdbKey: String = "",
-    val language: String = "es-MX",
-    val region: String = "AR",
+    /** TMDB metadata language. The defaults below follow the phone on first run; saved settings keep their value. */
+    val language: String = defaultMetadataLanguage(),
+    val region: String = defaultRegion(),
     val stremioAuthKey: String? = null,
     val stremioEmail: String? = null,
     val addons: List<AddonEntry> = emptyList(),
     val addonsSeeded: Boolean = false,
-    /** "Ahora no" on the home card that offers to link the Stremio account. */
+    /** "Not now" on the Home card that offers to link the Stremio account. */
     val stremioPromptDismissed: Boolean = false,
     /** Look for new versions on GitHub when the app opens. */
     val checkUpdates: Boolean = true,
-    /** The version whose offer got "Ahora no": Home stays quiet until a newer one. */
+    /** The version whose offer got "Not now": Home stays quiet until a newer one. */
     val dismissedUpdate: String? = null,
     /** ISO 639-1 code, or "" for the file's default track. */
     val audioLanguage: String = "",
     /** ISO 639-1 code, or "" for no subtitles. */
-    val subtitleLanguage: String = "es",
+    val subtitleLanguage: String = defaultSubtitleLanguage(),
     val subtitleScale: Float = 1f,
     val autoplayNext: Boolean = true,
     /** Ask before streaming on mobile data or another metered connection. */
@@ -65,6 +67,20 @@ data class Settings(
     /** Downloads wait for Wi-Fi (or another unmetered network). */
     val downloadWifiOnly: Boolean = true,
 )
+
+/** Spanish phones get Latin American Spanish metadata (Spain's own in Spain); everyone else, English. */
+private fun defaultMetadataLanguage(): String {
+    val locale = Locale.getDefault()
+    return when (locale.language) {
+        "es" -> if (locale.country == "ES") "es-ES" else "es-MX"
+        else -> "en-US"
+    }
+}
+
+private fun defaultRegion(): String = Locale.getDefault().country.ifEmpty { "US" }
+
+/** Spanish speakers get Spanish subtitles by default; others start with subtitles off. */
+private fun defaultSubtitleLanguage(): String = if (Locale.getDefault().language == "es") "es" else ""
 
 class SettingsRepository(private val store: JsonStore<Settings>) {
     val state: StateFlow<Settings> = store.state

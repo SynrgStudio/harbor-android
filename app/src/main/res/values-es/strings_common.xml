@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="common_cancel">Cancelar</string>
+    <string name="common_close">Cerrar</string>
+    <string name="common_retry">Reintentar</string>
+    <string name="common_not_now">Ahora no</string>
+    <string name="common_remove">Quitar</string>
+    <string name="common_episode_code">T%1$d:E%2$d</string>
+    <string name="common_season_n">Temporada %1$d</string>
+    <string name="common_episode_n">Episodio %1$d</string>
+    <string name="common_episodes">Episodios</string>
+    <string name="common_new_episodes">Episodios nuevos</string>
+</resources>

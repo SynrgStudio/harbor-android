@@ -1,5 +1,6 @@
 package com.synrg.harbor.ui.continuewatching
 
+import android.text.format.DateFormat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -41,10 +42,13 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.synrg.harbor.R
 import com.synrg.harbor.data.Img
 import com.synrg.harbor.data.ProgressEntry
 import com.synrg.harbor.episodes.CalendarEpisode
@@ -59,7 +63,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
-import java.util.Locale
+import com.synrg.harbor.core.Strings
 
 /**
  * Everything in progress, newest first, as a vertical list (tap to resume, the menu for details or
@@ -79,16 +83,15 @@ fun ContinueScreen(
     LaunchedEffect(Unit) { runCatching { graph.episodes.refreshIfStale() } }
 
     Column(Modifier.fillMaxSize().background(HarborColors.Bg).statusBarsPadding()) {
-        Text("Seguir viendo", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(start = 20.dp, top = 12.dp))
+        Text(stringResource(R.string.continue_title), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(start = 20.dp, top = 12.dp))
         val list = entries ?: return@Column
         // New episodes already watched (or being watched) here are not news.
         val recent = calendar.recent.filter { ep -> all[ep.key]?.let { it.finished || it.positionMs > 0 } != true }
         val upcoming = calendar.upcoming
         if (list.isEmpty() && recent.isEmpty() && upcoming.isEmpty()) {
             MessageBlock(
-                "Nada a medio ver",
-                "Lo que empieces a ver aparece acá, también lo que mires en Stremio o en Harbor de la PC. " +
-                    "Los episodios nuevos de tus series también.",
+                stringResource(R.string.continue_empty_title),
+                stringResource(R.string.continue_empty_text),
                 modifier = Modifier.padding(top = 60.dp),
             )
             return@Column
@@ -100,7 +103,7 @@ fun ContinueScreen(
         ) {
             if (list.isEmpty()) {
                 item(key = "nothing") {
-                    Text("Nada a medio ver por ahora.", style = MaterialTheme.typography.bodyMedium, color = HarborColors.TextDim, modifier = Modifier.padding(start = 4.dp))
+                    Text(stringResource(R.string.continue_nothing_now), style = MaterialTheme.typography.bodyMedium, color = HarborColors.TextDim, modifier = Modifier.padding(start = 4.dp))
                 }
             }
             items(list, key = { it.key }, contentType = { "row" }) { entry ->
@@ -122,13 +125,13 @@ fun ContinueScreen(
                 )
             }
             if (recent.isNotEmpty()) {
-                item(key = "recent-title") { SectionHeader("Episodios nuevos") }
+                item(key = "recent-title") { SectionHeader(stringResource(R.string.common_new_episodes)) }
                 items(recent, key = { "new-${it.key}" }, contentType = { "calendar" }) { ep ->
                     CalendarRow(ep, released = true, onClick = { onShow(ep) })
                 }
             }
             if (upcoming.isNotEmpty()) {
-                item(key = "upcoming-title") { SectionHeader("Próximamente") }
+                item(key = "upcoming-title") { SectionHeader(stringResource(R.string.continue_coming_soon)) }
                 items(upcoming, key = { "soon-${it.key}" }, contentType = { "calendar" }) { ep ->
                     CalendarRow(ep, released = false, onClick = { onShow(ep) })
                 }
@@ -159,7 +162,7 @@ private fun CalendarRow(ep: CalendarEpisode, released: Boolean, onClick: () -> U
             )
             if (released) {
                 Text(
-                    "NUEVO",
+                    stringResource(R.string.continue_new_badge),
                     style = MaterialTheme.typography.labelSmall,
                     color = HarborColors.OnAccent,
                     modifier = Modifier.padding(6.dp).clip(RoundedCornerShape(6.dp)).background(HarborColors.Accent)
@@ -170,7 +173,7 @@ private fun CalendarRow(ep: CalendarEpisode, released: Boolean, onClick: () -> U
         Column(Modifier.weight(1f).padding(start = 12.dp, end = 12.dp)) {
             Text(ep.show, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(
-                "T${ep.season} · E${ep.episode}" + (ep.name?.let { " — $it" } ?: ""),
+                stringResource(R.string.continue_episode_label, ep.season, ep.episode) + (ep.name?.let { " — $it" } ?: ""),
                 style = MaterialTheme.typography.bodySmall,
                 color = HarborColors.TextDim,
                 maxLines = 1,
@@ -192,21 +195,30 @@ private fun CalendarRow(ep: CalendarEpisode, released: Boolean, onClick: () -> U
     }
 }
 
-private val WEEKDAY = DateTimeFormatter.ofPattern("EEEE", Locale.forLanguageTag("es"))
-private val DAY_MONTH = DateTimeFormatter.ofPattern("EEEE d MMM", Locale.forLanguageTag("es"))
+/** A date formatter for [skeleton] in the app's language ("EEEEdMMM": "Thursday, Dec 4" / "jueves, 4 dic"). */
+private fun localFormatter(skeleton: String): DateTimeFormatter {
+    val locale = Strings.locale
+    return DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(locale, skeleton), locale)
+}
 
-/** "Salió hoy", "Salió el martes"; "Sale mañana", "Sale el jueves 4 dic". */
+/** "Out today", "Out Tuesday"; "Out tomorrow", "Out Thursday, Dec 4". */
+@Composable
 private fun airLabel(millis: Long, released: Boolean): String {
     val zone = ZoneId.systemDefault()
     val date = Instant.ofEpochMilli(millis).atZone(zone)
     val days = ChronoUnit.DAYS.between(LocalDate.now(zone), date.toLocalDate())
-    val verb = if (released) "Salió" else "Sale"
     return when {
-        days == 0L -> "$verb hoy"
-        days == -1L -> "Salió ayer"
-        days == 1L -> "Sale mañana"
-        days in -6L..6L -> "$verb el ${date.format(WEEKDAY)}"
-        else -> "$verb el ${date.format(DAY_MONTH).removeSuffix(".")}"
+        days == 0L -> stringResource(if (released) R.string.continue_aired_today else R.string.continue_airs_today)
+        days == -1L -> stringResource(R.string.continue_aired_yesterday)
+        days == 1L -> stringResource(R.string.continue_airs_tomorrow)
+        else -> {
+            val day = if (days in -6L..6L) {
+                date.format(DateTimeFormatter.ofPattern("EEEE", Strings.locale))
+            } else {
+                date.format(localFormatter("EEEEdMMM")).removeSuffix(".")
+            }
+            stringResource(if (released) R.string.continue_aired_on else R.string.continue_airs_on, day)
+        }
     }
 }
 
@@ -244,7 +256,7 @@ private fun ContinueRow(entry: ProgressEntry, onClick: () -> Unit, onDetails: ()
             Text(entry.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (entry.season != null && entry.episode != null) {
                 Text(
-                    "T${entry.season} · E${entry.episode}" + (entry.episodeTitle?.let { " — $it" } ?: ""),
+                    stringResource(R.string.continue_episode_label, entry.season, entry.episode) + (entry.episodeTitle?.let { " — $it" } ?: ""),
                     style = MaterialTheme.typography.bodySmall,
                     color = HarborColors.TextDim,
                     maxLines = 1,
@@ -255,7 +267,7 @@ private fun ContinueRow(entry: ProgressEntry, onClick: () -> Unit, onDetails: ()
             Spacer(Modifier.height(4.dp))
             Text(
                 listOf(
-                    if (entry.remainingMin > 0) "Quedan ${entry.remainingMin} min" else "Casi terminado",
+                    if (entry.remainingMin > 0) stringResource(R.string.continue_remaining, entry.remainingMin) else stringResource(R.string.continue_almost_done),
                     ago(entry.updatedAt),
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.labelSmall,
@@ -265,22 +277,22 @@ private fun ContinueRow(entry: ProgressEntry, onClick: () -> Unit, onDetails: ()
         }
         Box {
             Icon(
-                HIcons.MoreVert, "Opciones", tint = HarborColors.TextDim,
+                HIcons.MoreVert, stringResource(R.string.continue_options), tint = HarborColors.TextDim,
                 modifier = Modifier.size(40.dp).clip(CircleShape).clickable { menu = true }.padding(9.dp),
             )
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = HarborColors.SurfaceHigh) {
                 DropdownMenuItem(
-                    text = { Text("Ver ficha") },
+                    text = { Text(stringResource(R.string.continue_open_details)) },
                     leadingIcon = { Icon(HIcons.Info, null, modifier = Modifier.size(20.dp)) },
                     onClick = { menu = false; onDetails() },
                 )
                 DropdownMenuItem(
-                    text = { Text(if (entry.episode != null) "Marcar episodio como visto" else "Marcar como vista") },
+                    text = { Text(stringResource(if (entry.episode != null) R.string.watched_mark_episode else R.string.watched_mark_movie)) },
                     leadingIcon = { Icon(HIcons.CheckCircle, null, modifier = Modifier.size(20.dp)) },
                     onClick = { menu = false; onWatched() },
                 )
                 DropdownMenuItem(
-                    text = { Text("Quitar de Seguir viendo") },
+                    text = { Text(stringResource(R.string.continue_remove)) },
                     leadingIcon = { Icon(HIcons.Close, null, modifier = Modifier.size(20.dp)) },
                     onClick = { menu = false; onRemove() },
                 )
@@ -289,19 +301,18 @@ private fun ContinueRow(entry: ProgressEntry, onClick: () -> Unit, onDetails: ()
     }
 }
 
-private val SHORT_DATE = DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("es"))
-
-/** "recién", "hace 12 min", "hace 3 h", "ayer", "hace 4 días" or a date; always in Spanish, like the rest of the app. */
+/** "just now", "12 min ago", "3 h ago", "yesterday", "4 days ago" or a short date, in the app's language. */
+@Composable
 private fun ago(millis: Long): String {
     val minutes = (System.currentTimeMillis() - millis) / 60_000
     val zone = ZoneId.systemDefault()
     val days = ChronoUnit.DAYS.between(Instant.ofEpochMilli(millis).atZone(zone).toLocalDate(), LocalDate.now(zone))
     return when {
-        minutes < 1 -> "recién"
-        minutes < 60 -> "hace $minutes min"
-        days == 0L -> "hace ${minutes / 60} h"
-        days == 1L -> "ayer"
-        days < 7 -> "hace $days días"
-        else -> Instant.ofEpochMilli(millis).atZone(zone).format(SHORT_DATE).removeSuffix(".")
+        minutes < 1 -> stringResource(R.string.continue_just_now)
+        minutes < 60 -> stringResource(R.string.continue_minutes_ago, minutes)
+        days == 0L -> stringResource(R.string.continue_hours_ago, minutes / 60)
+        days == 1L -> stringResource(R.string.continue_yesterday)
+        days < 7 -> pluralStringResource(R.plurals.continue_days_ago, days.toInt(), days)
+        else -> Instant.ofEpochMilli(millis).atZone(zone).format(localFormatter("dMMM")).removeSuffix(".")
     }
 }

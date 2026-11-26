@@ -52,12 +52,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.synrg.harbor.R
 import com.synrg.harbor.data.HeroItem
 import com.synrg.harbor.data.Img
 import com.synrg.harbor.data.MediaItem
@@ -84,16 +86,16 @@ private fun ConnectStremioCard(onConnect: () -> Unit, onDismiss: () -> Unit) {
         Modifier.padding(start = 16.dp, end = 16.dp, top = 18.dp).fillMaxWidth().clip(shape)
             .background(HarborColors.Surface).border(1.dp, HarborColors.Outline, shape).padding(16.dp),
     ) {
-        Text("Conectá tu cuenta de Stremio", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.home_connect_title), style = MaterialTheme.typography.titleMedium)
         Text(
-            "Trae tus addons, lo que estás viendo y tu lista, igual que en Stremio y en Harbor de la PC.",
+            stringResource(R.string.home_connect_body),
             style = MaterialTheme.typography.bodySmall,
             color = HarborColors.TextDim,
             modifier = Modifier.padding(top = 4.dp, bottom = 14.dp),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PrimaryButton("Conectar", null, onClick = onConnect, modifier = Modifier.weight(1f))
-            GlassButton("Ahora no", null, onClick = onDismiss)
+            PrimaryButton(stringResource(R.string.home_connect_action), null, onClick = onConnect, modifier = Modifier.weight(1f))
+            GlassButton(stringResource(R.string.common_not_now), null, onClick = onDismiss)
         }
     }
 }
@@ -135,7 +137,7 @@ fun HomeScreen(
             if (continueWatching.isNotEmpty()) {
                 item(key = "continue", contentType = "continue") {
                     Column(Modifier.padding(top = 18.dp)) {
-                        SectionTitle("Seguir viendo")
+                        SectionTitle(stringResource(R.string.home_continue_watching))
                         Spacer(Modifier.height(10.dp))
                         LazyRow(
                             contentPadding = PaddingValues(horizontal = 16.dp),
@@ -150,13 +152,17 @@ fun HomeScreen(
             }
             if (state.error != null && state.rows.all { it == null } && !state.loading) {
                 item(key = "error") {
-                    MessageBlock("No se pudo cargar", state.error ?: "", action = { PrimaryButton("Reintentar", HIcons.Refresh, vm::load) })
+                    MessageBlock(
+                        stringResource(R.string.home_load_failed),
+                        state.error ?: "",
+                        action = { PrimaryButton(stringResource(R.string.common_retry), HIcons.Refresh, vm::load) },
+                    )
                 }
             }
             itemsIndexed(state.rows, key = { i, row -> row?.key ?: "placeholder-$i" }, contentType = { _, row -> if (row == null) "placeholder" else "row" }) { _, row ->
                 when {
                     row == null -> if (state.loading) PosterRowPlaceholder()
-                    row.items.isNotEmpty() -> PosterRow(row.title, row.items, onOpen)
+                    row.items.isNotEmpty() -> PosterRow(stringResource(row.title), row.items, onOpen)
                 }
             }
         }
@@ -261,7 +267,7 @@ private fun Hero(items: List<HeroItem>, onOpen: (MediaItem) -> Unit, onPlay: (Me
                         Spacer(Modifier.height(12.dp))
                         Text(
                             listOfNotNull(
-                                if (hero.item.type == MediaType.Movie) "Película" else "Serie",
+                                stringResource(if (hero.item.type == MediaType.Movie) R.string.home_type_movie else R.string.home_type_series),
                                 hero.item.year,
                                 *hero.genres.toTypedArray(),
                             ).joinToString("  ·  "),
@@ -272,8 +278,8 @@ private fun Hero(items: List<HeroItem>, onOpen: (MediaItem) -> Unit, onPlay: (Me
                 }
                 Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    PrimaryButton("Ver", HIcons.Play, onClick = { onPlay(current.item) }, modifier = Modifier.width(132.dp))
-                    GlassButton("Detalles", HIcons.Info, onClick = { onOpen(current.item) }, modifier = Modifier.width(132.dp))
+                    PrimaryButton(stringResource(R.string.home_play), HIcons.Play, onClick = { onPlay(current.item) }, modifier = Modifier.width(132.dp))
+                    GlassButton(stringResource(R.string.home_details), HIcons.Info, onClick = { onOpen(current.item) }, modifier = Modifier.width(132.dp))
                 }
                 Spacer(Modifier.height(16.dp))
                 PagerDots(items.size, pager.currentPage)

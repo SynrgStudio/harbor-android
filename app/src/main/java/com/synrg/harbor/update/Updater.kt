@@ -12,7 +12,9 @@ import android.provider.Settings as AndroidSettings
 import androidx.compose.runtime.Immutable
 import androidx.core.content.IntentCompat
 import com.synrg.harbor.BuildConfig
+import com.synrg.harbor.R
 import com.synrg.harbor.core.HttpException
+import com.synrg.harbor.core.Strings
 import com.synrg.harbor.core.await
 import com.synrg.harbor.data.SettingsRepository
 import com.synrg.harbor.graph
@@ -83,7 +85,7 @@ class Updater(
             .cacheControl(CacheControl.FORCE_NETWORK)
             .build()
         val latest = http.newCall(request).await().use { response ->
-            if (!response.isSuccessful) throw HttpException(response.code, "GitHub respondió ${response.code}")
+            if (!response.isSuccessful) throw HttpException(response.code, Strings.get(R.string.update_error_github, response.code))
             withContext(Dispatchers.Default) { json.decodeFromString(GithubRelease.serializer(), response.body.string()) }
         }
         val version = latest.tag.removePrefix("v")
@@ -112,7 +114,7 @@ class Updater(
                 val file = download(release)
                 if (app.packageManager.canRequestPackageInstalls()) install(release, file)
                 else _state.value = UpdateState.NeedsPermission(release)
-            }.onFailure { _state.value = UpdateState.Failed(release, it.message ?: "No se pudo descargar") }
+            }.onFailure { _state.value = UpdateState.Failed(release, it.message ?: Strings.get(R.string.update_error_download)) }
         }
     }
 
@@ -127,7 +129,7 @@ class Updater(
         if (!app.packageManager.canRequestPackageInstalls()) return
         scope.launch {
             runCatching { install(state.release, apkFile(state.release)) }
-                .onFailure { _state.value = UpdateState.Failed(state.release, it.message ?: "No se pudo instalar") }
+                .onFailure { _state.value = UpdateState.Failed(state.release, it.message ?: Strings.get(R.string.update_error_install)) }
         }
     }
 
@@ -140,7 +142,7 @@ class Updater(
         _state.value = UpdateState.Downloading(release, 0f)
         val digest = MessageDigest.getInstance("SHA-256")
         http.newCall(Request.Builder().url(release.apkUrl).cacheControl(CacheControl.FORCE_NETWORK).build()).await().use { response ->
-            if (!response.isSuccessful) throw IOException("La descarga respondió ${response.code}")
+            if (!response.isSuccessful) throw IOException(Strings.get(R.string.update_error_download_status, response.code))
             val total = response.body.contentLength().takeIf { it > 0 } ?: release.size
             response.body.byteStream().use { input ->
                 partial.outputStream().use { output ->
@@ -166,7 +168,7 @@ class Updater(
         val hex = digest.digest().joinToString("") { "%02x".format(it) }
         if (release.sha256 != null && !hex.equals(release.sha256, ignoreCase = true)) {
             partial.delete()
-            throw IOException("La descarga llegó dañada; probá de nuevo")
+            throw IOException(Strings.get(R.string.update_error_corrupt))
         }
         target.delete()
         partial.renameTo(target)
@@ -174,7 +176,7 @@ class Updater(
     }
 
     private suspend fun install(release: Release, file: File) = withContext(Dispatchers.IO) {
-        if (!file.exists()) throw IOException("El archivo descargado ya no está; descargalo de nuevo")
+        if (!file.exists()) throw IOException(Strings.get(R.string.update_error_file_gone))
         _state.value = UpdateState.Installing(release)
         val installer = app.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
@@ -202,7 +204,7 @@ class Updater(
             PackageInstaller.STATUS_PENDING_USER_ACTION -> confirm?.let { app.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             PackageInstaller.STATUS_SUCCESS -> _state.value = UpdateState.Idle
             PackageInstaller.STATUS_FAILURE_ABORTED -> _state.value = release?.let { UpdateState.Available(it) } ?: UpdateState.Idle
-            else -> _state.value = UpdateState.Failed(release, message ?: "Android no pudo instalarla")
+            else -> _state.value = UpdateState.Failed(release, message ?: Strings.get(R.string.update_error_android))
         }
     }
 

@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Title page (details) -->
+    <string name="detail_more_like_this">More like this</string>
+    <string name="detail_error_title">Couldn\'t open this</string>
+    <string name="detail_no_connection">No connection</string>
+    <string name="detail_back">Back</string>
+    <string name="detail_downloading_toast">Downloading… find it in My list → Downloads</string>
+    <!-- Runtime, e.g. "2 h 19 min". -->
+    <string name="detail_runtime_hm">%1$d h %2$d min</string>
+    <string name="detail_runtime_min">%1$d min</string>
+    <plurals name="detail_seasons">
+        <item quantity="one">%1$d season</item>
+        <item quantity="other">%1$d seasons</item>
+    </plurals>
+    <string name="detail_streams">Streams</string>
+    <string name="detail_in_list">In my list</string>
+    <string name="detail_add_to_list">Add to my list</string>
+    <string name="detail_alerts_off">Turn off new episode notifications</string>
+    <string name="detail_alerts_on">Notify me of new episodes</string>
+    <!-- An episode not out yet; the argument is its air date. -->
+    <string name="detail_airs_on">Out on %1$s</string>
+    <string name="detail_cast">Cast</string>
+    <!-- The main button. -->
+    <string name="detail_play_now">Watch now</string>
+    <string name="detail_resume_movie">Continue · %1$d min left</string>
+    <!-- The argument is an episode code such as "S1:E2". -->
+    <string name="detail_resume_episode">Continue %1$s</string>
+    <string name="detail_watch_again">Watch again</string>
+    <string name="detail_next_episode">Next episode</string>
+    <!-- Download state under the buttons and on episodes. -->
+    <string name="detail_download_done_movie">Downloaded · watch offline</string>
+    <string name="detail_download_done">Downloaded</string>
+    <string name="detail_download_progress">Downloading %1$d%%</string>
+    <string name="detail_download_queued">Download queued</string>
+    <string name="detail_download_waiting_wifi">Download waiting for Wi-Fi</string>
+    <string name="detail_download_paused">Download paused</string>
+    <string name="detail_download_failed">Download failed</string>
+
+    <!-- Watched marks -->
+    <string name="watched_movie_done">Watched</string>
+    <string name="watched_movie_mark">Mark watched</string>
+    <string name="watched_season_done">Season watched</string>
+    <string name="watched_season_mark">Mark season watched</string>
+    <string name="watched_episode_done">Watched</string>
+    <string name="watched_mark">Mark as watched</string>
+    <string name="watched_unmark">Mark as unwatched</string>
+    <string name="watched_mark_episode">Mark episode as watched</string>
+    <string name="watched_mark_movie">Mark as watched</string>
+
+    <!-- Streams sheet -->
+    <string name="streams_filter_all">All</string>
+    <string name="streams_filter_other">Other</string>
+    <string name="streams_pick">Choose a stream</string>
+    <string name="streams_no_response">No response</string>
+    <plurals name="streams_count">
+        <item quantity="one">%1$d stream</item>
+        <item quantity="other">%1$d streams</item>
+    </plurals>
+    <string name="streams_resume_same">Continue with the same stream</string>
+    <string name="streams_from_min">from min %1$d</string>
+    <string name="streams_play_download">Watch the download</string>
+    <string name="streams_download_offline">It\'s on your phone: no data or internet needed</string>
+    <string name="streams_cached">⚡ Cached</string>
+    <plurals name="streams_seeds">
+        <item quantity="one">%1$d seed</item>
+        <item quantity="other">%1$d seeds</item>
+    </plurals>
+    <string name="streams_torrent_no_engine">torrent: engine missing</string>
+    <string name="streams_download">Download</string>
+    <!-- Name for a stream whose addon gave no title. -->
+    <string name="streams_fallback_title">Stream %1$d</string>
+    <string name="streams_error_no_imdb">This title has no IMDb ID, so addons can\'t look it up.</string>
+    <string name="streams_error_no_addons">You have no stream addons enabled. Add them in Settings.</string>
+
+    <!-- Continue watching -->
+    <string name="continue_title">Continue watching</string>
+    <string name="continue_empty_title">Nothing in progress</string>
+    <string name="continue_empty_text">What you start watching shows up here, including what you watch in Stremio or in Harbor on your PC. New episodes of your shows too.</string>
+    <string name="continue_nothing_now">Nothing in progress right now.</string>
+    <string name="continue_coming_soon">Coming soon</string>
+    <string name="continue_new_badge">NEW</string>
+    <!-- Season and episode, e.g. "S1 · E2". -->
+    <string name="continue_episode_label">S%1$d · E%2$d</string>
+    <string name="continue_remaining">%1$d min left</string>
+    <string name="continue_almost_done">Almost done</string>
+    <string name="continue_options">Options</string>
+    <string name="continue_open_details">Open details</string>
+    <string name="continue_remove">Remove from Continue watching</string>
+    <!-- When an episode came out or comes out. The argument is a weekday ("Tuesday") or a date ("Thursday, Dec 4"). -->
+    <string name="continue_aired_today">Out today</string>
+    <string name="continue_airs_today">Out today</string>
+    <string name="continue_aired_yesterday">Out yesterday</string>
+    <string name="continue_airs_tomorrow">Out tomorrow</string>
+    <string name="continue_aired_on">Out %1$s</string>
+    <string name="continue_airs_on">Out %1$s</string>
+    <!-- When something was last watched. -->
+    <string name="continue_just_now">just now</string>
+    <string name="continue_minutes_ago">%1$d min ago</string>
+    <string name="continue_hours_ago">%1$d h ago</string>
+    <string name="continue_yesterday">yesterday</string>
+    <plurals name="continue_days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
+
+    <!-- Home rows and metadata errors -->
+    <string name="meta_row_trending">Trending this week</string>
+    <string name="meta_row_popular_movies">Popular movies</string>
+    <string name="meta_row_popular_series">Popular series</string>
+    <string name="meta_row_new_releases">New releases</string>
+    <string name="meta_row_anime">Anime</string>
+    <string name="meta_row_new_series">New series</string>
+    <string name="meta_row_scifi">Sci-fi</string>
+    <string name="meta_row_comedy">For a laugh</string>
+    <string name="meta_row_horror">Horror</string>
+    <string name="meta_row_now_playing">In theaters now</string>
+    <string name="meta_row_top_movies">Top rated movies</string>
+    <string name="meta_row_top_series">Acclaimed series</string>
+    <string name="meta_row_airing">Series on the air</string>
+    <string name="meta_error_server">The details server returned %1$d</string>
+    <string name="meta_error_not_found">Couldn\'t find this title</string>
+    <string name="meta_error_incomplete">This title\'s details came back incomplete</string>
+    <string name="meta_error_tmdb">TMDB returned %1$d</string>
+</resources>

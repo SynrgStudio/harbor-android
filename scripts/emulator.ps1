@@ -36,4 +36,4 @@ do {
 } while ($boot -ne '1' -and (Get-Date) -lt $deadline)
 if ($boot -ne '1') { throw "The emulator did not boot. See .tools\emulator.err.txt" }
 Invoke-Adb -s $serial shell settings put global window_animation_scale 1 | Out-Null
-"Listo: $serial"
+"Ready: $serial"

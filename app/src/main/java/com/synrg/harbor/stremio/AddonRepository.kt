@@ -1,6 +1,8 @@
 package com.synrg.harbor.stremio
 
+import com.synrg.harbor.R
 import com.synrg.harbor.core.HttpException
+import com.synrg.harbor.core.Strings
 import com.synrg.harbor.core.await
 import com.synrg.harbor.data.AddonEntry
 import com.synrg.harbor.data.AddonResource
@@ -91,7 +93,7 @@ class AddonRepository(
             seriesCache[imdb] = System.currentTimeMillis() to sorted
             return sorted
         }
-        throw IOException("No se encontró la lista de episodios de $imdb")
+        throw IOException("No episode list found for $imdb")
     }
 
     /** Accepts https://…/manifest.json, stremio://…/manifest.json or a bare addon base URL. */
@@ -106,7 +108,7 @@ class AddonRepository(
     private suspend fun getText(url: String): String {
         val response = http.newCall(Request.Builder().url(url).build()).await()
         return response.use {
-            if (!it.isSuccessful) throw HttpException(it.code, "El addon respondió ${it.code}")
+            if (!it.isSuccessful) throw HttpException(it.code, Strings.get(R.string.stremio_addon_responded, it.code))
             withContext(Dispatchers.IO) { it.body.string() }
         }
     }
@@ -179,7 +181,7 @@ class AddonRepository(
                 send(
                     result.fold(
                         onSuccess = { AddonStreams.Loaded(addon, it) },
-                        onFailure = { AddonStreams.Failed(addon, it.message ?: "Sin respuesta") },
+                        onFailure = { AddonStreams.Failed(addon, it.message ?: Strings.get(R.string.stremio_no_response)) },
                     ),
                 )
             }

@@ -4,8 +4,10 @@ import android.app.Application
 import android.content.Intent
 import androidx.compose.runtime.Immutable
 import androidx.core.content.ContextCompat
+import com.synrg.harbor.R
 import com.synrg.harbor.core.JsonStore
 import com.synrg.harbor.core.NetworkMonitor
+import com.synrg.harbor.core.Strings
 import com.synrg.harbor.core.await
 import com.synrg.harbor.data.MediaType
 import com.synrg.harbor.data.ProgressEntry
@@ -77,7 +79,7 @@ data class DownloadItem(
     fun playback(resumeMs: Long = 0) = PlaybackRequest(
         type = type, tmdbId = tmdbId, imdbId = imdbId, season = season, episode = episode,
         title = title, episodeTitle = episodeTitle, poster = poster, backdrop = backdrop, still = still,
-        stream = SavedStream(url = "file://" + file, filename = file?.substringAfterLast('/'), addonName = "Descargado", label = stream.label),
+        stream = SavedStream(url = "file://" + file, filename = file?.substringAfterLast('/'), addonName = Strings.get(R.string.downloads_downloaded), label = stream.label),
         startPositionMs = resumeMs,
     )
 }
@@ -232,7 +234,7 @@ class Downloads(
                 throw e
             } catch (e: Exception) {
                 if (get(next.id)?.status == DownloadStatus.Downloading) {
-                    setStatus(next.id, DownloadStatus.Failed, e.message ?: "No se pudo descargar")
+                    setStatus(next.id, DownloadStatus.Failed, e.message ?: Strings.get(R.string.downloads_failed))
                 }
             }
             _speed.value = _speed.value - next.id
@@ -293,7 +295,7 @@ class Downloads(
     }
 
     private suspend fun downloadHttp(item: DownloadItem, onUpdate: () -> Unit) {
-        val url = item.stream.url ?: throw IOException("La fuente no tiene enlace")
+        val url = item.stream.url ?: throw IOException(Strings.get(R.string.downloads_no_link))
         val part = partFile(item)
         val ext = (item.stream.filename ?: url.substringBefore('?')).substringAfterLast('.', "").takeIf { it.length in 2..4 } ?: "mkv"
         val target = File(dir, safeName(item) + "." + ext)
@@ -304,7 +306,7 @@ class Downloads(
         }.build()
         val response = http.newCall(request).await()
         response.use { res ->
-            if (!res.isSuccessful) throw IOException("La fuente respondió ${res.code}")
+            if (!res.isSuccessful) throw IOException(Strings.get(R.string.downloads_stream_responded, res.code))
             val resumed = res.code == 206
             val start = if (resumed) already else 0L
             val total = start + (res.body.contentLength().takeIf { it > 0 } ?: 0L)

@@ -33,7 +33,9 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import com.synrg.harbor.R
 import com.synrg.harbor.core.Connection
+import com.synrg.harbor.core.Strings
 import com.synrg.harbor.data.MediaType
 import com.synrg.harbor.data.ProgressEntry
 import com.synrg.harbor.data.SubtitleChoice
@@ -73,7 +75,7 @@ data class PlayerStatus(
     val nextUp: PlaybackRequest? = null,
     val ended: Boolean = false,
     val pip: Boolean = false,
-    /** Waiting for "Reproducir igual" before streaming on this metered connection. */
+    /** Waiting for "Play anyway" before streaming on this metered connection. */
     val dataWarning: Connection? = null,
     val subtitleDelayMs: Long = 0,
     val sleep: SleepTimer? = null,
@@ -118,7 +120,7 @@ class PlayerActivity : ComponentActivity() {
     private var savedSubtitle: SubtitleChoice? = null
     private var advancing = false
     private val subtitleTiming = SubtitleTiming()
-    /** "Reproducir igual" on mobile data counts for the rest of this player session. */
+    /** "Play anyway" on mobile data counts for the rest of this player session. */
     private var dataApproved = false
     private var dataDecision: CompletableDeferred<Boolean>? = null
     private var sleepJob: Job? = null
@@ -192,11 +194,11 @@ class PlayerActivity : ComponentActivity() {
         override fun onPlayerError(error: PlaybackException) {
             val message = when (error.errorCode) {
                 PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
-                PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> "Se cortó la conexión con la fuente."
-                PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> "La fuente ya no está disponible (enlace vencido o caído)."
+                PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> Strings.get(R.string.player_error_connection_lost)
+                PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> Strings.get(R.string.player_error_stream_gone)
                 PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED,
-                PlaybackException.ERROR_CODE_DECODER_INIT_FAILED -> "El teléfono no puede decodificar este video. Probá otra fuente."
-                PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED -> "Formato de archivo no soportado."
+                PlaybackException.ERROR_CODE_DECODER_INIT_FAILED -> Strings.get(R.string.player_error_cant_decode)
+                PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED -> Strings.get(R.string.player_error_unsupported_format)
                 else -> error.errorCodeName.removePrefix("ERROR_CODE_").replace('_', ' ').lowercase()
             }
             _status.update { it.copy(error = message, preparing = null) }
@@ -392,7 +394,7 @@ class PlayerActivity : ComponentActivity() {
         userPickedText = false
         subsJob?.cancel()
         subsJob = null
-        val preparing = if (request.stream.infoHash != null && request.stream.url == null) "Conectando con el torrent…" else "Cargando…"
+        val preparing = if (request.stream.infoHash != null && request.stream.url == null) Strings.get(R.string.player_connecting_torrent) else Strings.get(R.string.player_loading)
         _status.value = PlayerStatus(
             request = request,
             preparing = preparing,
@@ -418,7 +420,7 @@ class PlayerActivity : ComponentActivity() {
                 _status.update { it.copy(dataWarning = null, preparing = preparing) }
             }
             val uri = runCatching { resolve(request) }.getOrElse { e ->
-                _status.update { it.copy(error = e.message ?: "No se pudo abrir la fuente", preparing = null) }
+                _status.update { it.copy(error = e.message ?: Strings.get(R.string.player_error_cant_open), preparing = null) }
                 return@launch
             }
             httpFactory.setDefaultRequestProperties(request.stream.headers)
@@ -482,7 +484,7 @@ class PlayerActivity : ComponentActivity() {
     private suspend fun resolve(request: PlaybackRequest): String {
         val stream = request.stream
         stream.url?.let { return it }
-        val hash = stream.infoHash ?: error("La fuente no tiene enlace reproducible")
+        val hash = stream.infoHash ?: error(Strings.get(R.string.player_error_no_link))
         val torrent = preparedTorrent?.takeIf { it.first == hash }?.second ?: graph.torrents.open(stream)
         preparedTorrent = null
         torrentId = torrent.torrentId
@@ -637,14 +639,14 @@ class PlayerActivity : ComponentActivity() {
         if (advancing) return
         advancing = true
         saveProgress(ended = player.duration > 0 && player.currentPosition > player.duration * 0.9)
-        _status.update { it.copy(preparing = "Buscando el siguiente episodio…", error = null) }
+        _status.update { it.copy(preparing = Strings.get(R.string.player_finding_next), error = null) }
         player.pause()
         lifecycleScope.launch {
             val next = runCatching { findNext(request) }.getOrNull()
             advancing = false
             if (next == null) {
                 val ended = player.playbackState == Player.STATE_ENDED
-                _status.update { it.copy(preparing = null, hasNext = false, error = if (ended) "No hay más episodios disponibles." else null) }
+                _status.update { it.copy(preparing = null, hasNext = false, error = if (ended) Strings.get(R.string.player_error_no_more_episodes) else null) }
                 if (!ended) player.play()
             } else {
                 start(next)

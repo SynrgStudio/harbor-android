@@ -3,14 +3,14 @@
 A fast, native movie and TV app for Android that works with your Stremio account. Inspired by the [Harbor](https://github.com/HarborCommunity/Harbor) desktop app.
 
 - Metadata and artwork from TMDB, with nothing to set up.
-- Your addons, Continue Watching, library and watched episodes, synced with Stremio.
+- Your addons, Continue watching, library and watched episodes, synced with Stremio.
 - Its own player, with gestures, built for phones.
 
 ## Features
 
-- **Home:** featured carousel, Continue Watching, trending, popular, new releases, anime and more.
+- **Home:** featured carousel, Continue watching, trending, popular, new releases, anime and more.
 - **Title pages:** seasons, episodes, cast and similar titles. Works without any key through the TMDB addon; add your own TMDB key in Settings to use the API directly.
-- **Stremio account:** sign in once and your addons, Continue Watching, library and watched marks come along, and stay in sync with Stremio and Harbor desktop.
+- **Stremio account:** sign in once and your addons, Continue watching, library and watched marks come along, and stay in sync with Stremio and Harbor desktop.
 - **Streams:** from your account's addons, from addons added by URL or through `stremio://` links. Sorted by debrid cache, quality and seeds, with resolution filters.
 - **Continue tab:** everything you're halfway through, new episodes of the series you follow, and what's coming soon. Resuming goes straight back to the player with the same stream.
 - **Player:**
@@ -26,7 +26,7 @@ A fast, native movie and TV app for Android that works with your Stremio account
 - **Launcher shortcuts** to resume what you're watching.
 - **In-app updates** from GitHub Releases, verified against the published SHA-256.
 
-The interface is in Spanish for now; an English translation is on the way.
+Available in English and Spanish: it follows the phone's language, and on Android 13 or later you can pick it per app in the system settings.
 
 Harbor doesn't host or provide any content: it shows what the addons you configure return.
 

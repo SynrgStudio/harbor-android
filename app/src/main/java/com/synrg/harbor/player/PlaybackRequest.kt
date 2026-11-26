@@ -1,5 +1,7 @@
 package com.synrg.harbor.player
 
+import com.synrg.harbor.R
+import com.synrg.harbor.core.Strings
 import com.synrg.harbor.data.MediaType
 import com.synrg.harbor.data.ProgressEntry
 import com.synrg.harbor.data.SavedStream
@@ -43,6 +45,11 @@ data class PlaybackRequest(
         )
     }
 
+    /** "S1 · E2 — Title" for an episode, null for a movie. */
     val displaySubtitle: String?
-        get() = if (season != null && episode != null) "T$season · E$episode" + (episodeTitle?.let { " — $it" } ?: "") else null
+        get() = when {
+            season == null || episode == null -> null
+            episodeTitle != null -> Strings.get(R.string.player_episode_label_titled, season, episode, episodeTitle)
+            else -> Strings.get(R.string.player_episode_label, season, episode)
+        }
 }

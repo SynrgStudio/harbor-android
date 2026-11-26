@@ -51,7 +51,7 @@ data class CalendarData(
 )
 
 /**
- * New and upcoming episodes of the series the user follows: the ones in "Mi lista" and the ones
+ * New and upcoming episodes of the series the user follows: the ones in "My list" and the ones
  * watched lately. Dates come from the same metadata addon Stremio uses (usually Cinemeta), the
  * names in the app's language from TMDB.
  */

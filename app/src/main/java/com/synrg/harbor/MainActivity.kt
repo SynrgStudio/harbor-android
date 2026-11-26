@@ -109,9 +109,11 @@ class MainActivity : ComponentActivity() {
             runCatching { graph.addons.fetchManifest(data.toString()) }
                 .onSuccess { entry ->
                     graph.settings.update { s -> s.copy(addons = s.addons.filterNot { it.id == entry.id } + entry, addonsSeeded = true) }
-                    Toast.makeText(this@MainActivity, "${entry.name} instalado", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, getString(R.string.app_addon_installed, entry.name), Toast.LENGTH_SHORT).show()
                 }
-                .onFailure { Toast.makeText(this@MainActivity, it.message ?: "No se pudo instalar el addon", Toast.LENGTH_LONG).show() }
+                .onFailure {
+                    Toast.makeText(this@MainActivity, it.message ?: getString(R.string.app_addon_install_failed), Toast.LENGTH_LONG).show()
+                }
         }
     }
 }

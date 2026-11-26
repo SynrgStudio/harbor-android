@@ -1,6 +1,8 @@
 package com.synrg.harbor.tmdb
 
+import com.synrg.harbor.R
 import com.synrg.harbor.core.HttpException
+import com.synrg.harbor.core.Strings
 import com.synrg.harbor.core.await
 import com.synrg.harbor.data.CastMember
 import com.synrg.harbor.data.Details
@@ -65,7 +67,7 @@ class TmdbApi(
         val response = http.newCall(request).await()
         return withContext(Dispatchers.Default) {
             response.use {
-                if (!it.isSuccessful) throw HttpException(it.code, "TMDB respondió ${it.code}")
+                if (!it.isSuccessful) throw HttpException(it.code, Strings.get(R.string.meta_error_tmdb, it.code))
                 json.decodeFromString(strategy, it.body.string())
             }
         }
@@ -138,7 +140,7 @@ class TmdbApi(
             genres = d.genres.map { it.name },
             runtime = d.runtime ?: d.episodeRunTime.firstOrNull(),
             seasons = d.seasons.filter { it.seasonNumber > 0 && it.episodeCount > 0 }
-                .map { SeasonInfo(it.seasonNumber, it.name ?: "Temporada ${it.seasonNumber}", it.episodeCount) },
+                .map { SeasonInfo(it.seasonNumber, it.name ?: Strings.get(R.string.common_season_n, it.seasonNumber), it.episodeCount) },
             cast = d.credits?.cast.orEmpty().take(20).map { CastMember(it.id, it.name, it.character, it.profilePath) },
             recommendations = d.recommendations?.results.orEmpty().mapNotNull { it.toMediaItem(type) }.filter { it.posterPath != null },
             imdbId = d.imdbId ?: d.externalIds?.imdbId,
@@ -158,7 +160,7 @@ class TmdbApi(
             Episode(
                 season = it.seasonNumber,
                 number = it.episodeNumber,
-                name = it.name?.takeIf(String::isNotBlank) ?: "Episodio ${it.episodeNumber}",
+                name = it.name?.takeIf(String::isNotBlank) ?: Strings.get(R.string.common_episode_n, it.episodeNumber),
                 overview = it.overview.orEmpty(),
                 stillPath = it.stillPath,
                 runtime = it.runtime,

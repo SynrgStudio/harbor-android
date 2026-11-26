@@ -16,6 +16,7 @@ Native Android app (Kotlin + Jetpack Compose): TMDB metadata, streams from Strem
 - No network or mobile data on the emulator: `adb shell svc wifi disable` leaves only the (metered) cellular network; add `svc data disable` for no internet at all.
 - Open the app the way notifications and shortcuts do: `adb shell am start -n com.synrg.harbor/.MainActivity -a com.synrg.harbor.OPEN --es type tv --ei id 456 --ei season 38` (also `.RESUME --es key movie:1726` and `.DOWNLOADS`). `MainActivity` is `singleTop` and each window has its own `links`, not a global one: a `stremio://` link opens another window, which used to swallow them.
 - Run the new-episode check by hand: `adb shell cmd jobscheduler run -f com.synrg.harbor 4201`. `am force-stop` wipes scheduled jobs (use `am kill` with the app in the background); `lastCheck` is in `files/episodes.json` (`run-as`).
+- Check both languages: `adb shell cmd locale set-app-locales com.synrg.harbor --locales es` (or `en`; `--locales` empty goes back to the system language).
 - Emulator screenshot from bash: `adb -s emulator-5590 exec-out screencap -p > shot.png` (in PowerShell 5.1 the redirect corrupts the PNG).
 
 ## Rules and gotchas
@@ -31,6 +32,7 @@ Native Android app (Kotlin + Jetpack Compose): TMDB metadata, streams from Strem
 - Subtitle delay: `player/SubtitleDelay.kt` wraps the `TextRenderer` (it's `final`) and shifts its position. With a positive delay, a cue that already passed doesn't come back; the next one shows on time.
 - librqbit 9.1: the `http-api` feature also needs `tracing-subscriber-utils`, and `Api::new` takes 3 arguments. Kotlin only calls `NativeEngine.start`; everything else goes through the HTTP API on 127.0.0.1 (`TorrentEngine.kt`).
 - Many torrent results come without trackers: `DEFAULT_TRACKERS` in `TorrentEngine.kt` fills them in. Seed counts reported by addons can be stale; to test torrents, use a recent release.
+- UI text: English in `res/values/strings_<area>.xml`, Spanish in `res/values-es/` with the same keys (shared ones in `strings_common.xml`). Composables read them with `stringResource`/`pluralStringResource`; everything else (view models, repositories, services, errors shown later) uses `core/Strings.kt`, and `Strings.locale` for dates and numbers (with `DateFormat.getBestDateTimePattern`). Don't use the application context or `Locale.getDefault()` for UI text: after a per-app language switch they can keep the old language. First-run defaults for metadata language, region and subtitles follow the phone (`data/Settings.kt`); saved settings keep their value. `localeFilters` in `app/build.gradle.kts` and `res/xml/locales_config.xml` list the shipped languages: add a new one in both.
 - Measure performance with release builds only: Compose in debug is much slower.
 - Text without an explicit color takes `LocalContentColor`, set in `HarborTheme` (there's no root `Surface`).
 - No annotation-processing dependencies (no Room/Hilt/KSP): persistent state uses `core/JsonStore.kt`.

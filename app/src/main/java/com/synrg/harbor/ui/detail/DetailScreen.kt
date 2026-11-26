@@ -55,11 +55,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.synrg.harbor.R
 import com.synrg.harbor.data.Details
 import com.synrg.harbor.data.Episode
 import com.synrg.harbor.data.Img
@@ -99,6 +102,7 @@ fun DetailScreen(
     val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     val streams by vm.streams.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
+    val downloadingToast = stringResource(R.string.detail_downloading_toast)
     LaunchedEffect(vm) { vm.playRequests.collect { onPlay(it) } }
 
     Box(Modifier.fillMaxSize().background(HarborColors.Bg)) {
@@ -117,7 +121,7 @@ fun DetailScreen(
                         onToggleList = vm::toggleWatchlist,
                         movieWatched = movieWatched.takeIf { details.item.type == MediaType.Movie && !state.partial },
                         onToggleWatched = { vm.setMovieWatched(!movieWatched) },
-                        downloadNote = downloads[ProgressEntry.key(MediaType.Movie, vm.id)]?.takeIf { details.item.type == MediaType.Movie }?.let(::downloadLabel),
+                        downloadNote = downloads[ProgressEntry.key(MediaType.Movie, vm.id)]?.takeIf { details.item.type == MediaType.Movie }?.let { downloadLabel(it) },
                         alerts = alerts,
                         onToggleAlerts = {
                             if (alerts == false && Build.VERSION.SDK_INT >= 33 && !EpisodeAlerts.permitted(context)) {
@@ -151,7 +155,7 @@ fun DetailScreen(
                             val key = ProgressEntry.key(MediaType.Tv, vm.id, ep.season, ep.number)
                             val epWatched = key in watched
                             EpisodeRow(
-                                ep, progress[key], epWatched, downloads[key]?.let(::downloadLabel),
+                                ep, progress[key], epWatched, downloads[key]?.let { downloadLabel(it) },
                                 onClick = { vm.openEpisode(ep) },
                                 onToggleWatched = { vm.setEpisodesWatched(listOf(ep), !epWatched) },
                             )
@@ -162,18 +166,18 @@ fun DetailScreen(
                     item(key = "cast", contentType = "cast") { CastRow(details) }
                 }
                 if (details.recommendations.isNotEmpty()) {
-                    item(key = "recs", contentType = "row") { PosterRow("Más como esta", details.recommendations, onOpen) }
+                    item(key = "recs", contentType = "row") { PosterRow(stringResource(R.string.detail_more_like_this), details.recommendations, onOpen) }
                 }
             }
             state.error != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                MessageBlock("No se pudo abrir", state.error ?: "", action = { PrimaryButton("Reintentar", HIcons.Refresh, vm::load) })
+                MessageBlock(stringResource(R.string.detail_error_title), state.error ?: "", action = { PrimaryButton(stringResource(R.string.common_retry), HIcons.Refresh, vm::load) })
             }
             else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(Modifier.size(32.dp), strokeWidth = 2.5.dp)
             }
         }
         RoundIconButton(
-            HIcons.Back, "Volver", onBack,
+            HIcons.Back, stringResource(R.string.detail_back), onBack,
             modifier = Modifier.statusBarsPadding().padding(start = 12.dp, top = 6.dp),
         )
     }
@@ -191,7 +195,7 @@ fun DetailScreen(
             },
             onDownload = { saved ->
                 vm.download(ui.target, saved)
-                Toast.makeText(context, "Descargando… lo ves en Mi lista → Descargas", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, downloadingToast, Toast.LENGTH_SHORT).show()
             },
             onDismiss = vm::closeStreams,
             onPick = { saved ->
@@ -266,12 +270,16 @@ private fun Header(details: Details, partial: Boolean, visible: Boolean, scrollO
 private fun MetaLine(details: Details, partial: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         RatingText(details.item.rating)
+        val runtime = details.runtime?.takeIf { it > 0 }?.let {
+            if (it >= 60) stringResource(R.string.detail_runtime_hm, it / 60, it % 60) else stringResource(R.string.detail_runtime_min, it)
+        }
+        val seasons = pluralStringResource(R.plurals.detail_seasons, details.seasons.size, details.seasons.size)
         val parts = buildList {
             details.item.year?.let(::add)
             if (details.item.type == MediaType.Movie) {
-                details.runtime?.takeIf { it > 0 }?.let { add(if (it >= 60) "${it / 60} h ${it % 60} min" else "$it min") }
+                runtime?.let(::add)
             } else if (!partial) {
-                add(if (details.seasons.size == 1) "1 temporada" else "${details.seasons.size} temporadas")
+                add(seasons)
             }
         }
         Text(parts.joinToString("  ·  "), style = MaterialTheme.typography.labelMedium, color = HarborColors.TextDim)
@@ -304,23 +312,23 @@ private fun Actions(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PrimaryButton(mainLabel, HIcons.Play, onPlay, modifier = Modifier.weight(1f))
             // Resuming skips the sources list; this is the way back to it (dead torrent, other quality).
-            if (onSources != null) GlassButton("Fuentes", null, onSources)
+            if (onSources != null) GlassButton(stringResource(R.string.detail_streams), null, onSources)
         }
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             GlassButton(
-                if (inWatchlist) "En mi lista" else "Agregar a mi lista",
+                if (inWatchlist) stringResource(R.string.detail_in_list) else stringResource(R.string.detail_add_to_list),
                 if (inWatchlist) HIcons.Check else HIcons.Add,
                 onToggleList,
                 modifier = Modifier.weight(1f),
             )
             if (movieWatched != null) {
-                GlassButton(if (movieWatched) "Vista" else "Marcar vista", if (movieWatched) HIcons.CheckCircle else HIcons.Visibility, onToggleWatched)
+                GlassButton(if (movieWatched) stringResource(R.string.watched_movie_done) else stringResource(R.string.watched_movie_mark), if (movieWatched) HIcons.CheckCircle else HIcons.Visibility, onToggleWatched)
             }
             if (alerts != null) {
                 RoundIconButton(
                     if (alerts) HIcons.Bell else HIcons.BellOff,
-                    if (alerts) "No avisarme de episodios nuevos" else "Avisarme de episodios nuevos",
+                    if (alerts) stringResource(R.string.detail_alerts_off) else stringResource(R.string.detail_alerts_on),
                     onToggleAlerts,
                     size = 46.dp,
                     tint = if (alerts) HarborColors.Accent else Color.White,
@@ -373,7 +381,7 @@ private fun Overview(details: Details) {
 private fun SeasonTabs(details: Details, selected: Int?, onSelect: (Int) -> Unit, seasonWatched: Boolean?, onToggleSeason: () -> Unit) {
     Column(Modifier.padding(top = 26.dp, bottom = 6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            SectionTitle("Episodios", Modifier.weight(1f))
+            SectionTitle(stringResource(R.string.common_episodes), Modifier.weight(1f))
             if (seasonWatched != null) {
                 Row(
                     Modifier.padding(end = 12.dp).clip(RoundedCornerShape(16.dp)).clickable(onClick = onToggleSeason)
@@ -387,7 +395,7 @@ private fun SeasonTabs(details: Details, selected: Int?, onSelect: (Int) -> Unit
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        if (seasonWatched) "Temporada vista" else "Marcar temporada",
+                        if (seasonWatched) stringResource(R.string.watched_season_done) else stringResource(R.string.watched_season_mark),
                         style = MaterialTheme.typography.labelMedium,
                         color = if (seasonWatched) HarborColors.Accent else HarborColors.TextDim,
                     )
@@ -405,7 +413,7 @@ private fun SeasonTabs(details: Details, selected: Int?, onSelect: (Int) -> Unit
             items(details.seasons, key = { it.number }) { season ->
                 val active = season.number == selected
                 Text(
-                    if (details.seasons.size > 1 || season.name.isBlank()) "Temporada ${season.number}" else season.name,
+                    if (details.seasons.size > 1 || season.name.isBlank()) stringResource(R.string.common_season_n, season.number) else season.name,
                     style = MaterialTheme.typography.labelLarge,
                     color = if (active) HarborColors.OnAccent else HarborColors.Text,
                     modifier = Modifier
@@ -453,9 +461,9 @@ private fun EpisodeRow(ep: Episode, progress: ProgressEntry?, watched: Boolean, 
         Column(Modifier.weight(1f)) {
             Text("${ep.number}. ${ep.name}", style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
             val meta = listOfNotNull(
-                ep.runtime?.takeIf { it > 0 }?.let { "$it min" },
-                if (!ep.released) ep.airDate?.let { "Sale el $it" } else null,
-                if (watched) "Visto" else null,
+                ep.runtime?.takeIf { it > 0 }?.let { stringResource(R.string.detail_runtime_min, it) },
+                if (!ep.released) ep.airDate?.let { stringResource(R.string.detail_airs_on, it) } else null,
+                if (watched) stringResource(R.string.watched_episode_done) else null,
                 download,
             ).joinToString("  ·  ")
             if (meta.isNotEmpty()) {
@@ -480,7 +488,7 @@ private fun EpisodeRow(ep: Episode, progress: ProgressEntry?, watched: Boolean, 
                 ) {
                     Icon(
                         HIcons.Check,
-                        if (watched) "Marcar como no visto" else "Marcar como visto",
+                        if (watched) stringResource(R.string.watched_unmark) else stringResource(R.string.watched_mark),
                         tint = if (watched) HarborColors.OnAccent else HarborColors.TextFaint,
                         modifier = Modifier.size(16.dp),
                     )
@@ -490,20 +498,21 @@ private fun EpisodeRow(ep: Episode, progress: ProgressEntry?, watched: Boolean, 
     }
 }
 
-/** "Descargado", "Descargando 45%", "Descarga en pausa"… */
+/** "Downloaded", "Downloading 45%", "Download paused"… */
+@Composable
 private fun downloadLabel(item: DownloadItem): String = when (item.status) {
-    DownloadStatus.Done -> if (item.type == MediaType.Movie) "Descargada · se ve sin internet" else "Descargado"
-    DownloadStatus.Downloading -> "Descargando ${(item.fraction * 100).toInt()}%"
-    DownloadStatus.Queued -> "Descarga en espera"
-    DownloadStatus.WaitingWifi -> "Descarga esperando Wi-Fi"
-    DownloadStatus.Paused -> "Descarga en pausa"
-    DownloadStatus.Failed -> "Descarga fallida"
+    DownloadStatus.Done -> if (item.type == MediaType.Movie) stringResource(R.string.detail_download_done_movie) else stringResource(R.string.detail_download_done)
+    DownloadStatus.Downloading -> stringResource(R.string.detail_download_progress, (item.fraction * 100).toInt())
+    DownloadStatus.Queued -> stringResource(R.string.detail_download_queued)
+    DownloadStatus.WaitingWifi -> stringResource(R.string.detail_download_waiting_wifi)
+    DownloadStatus.Paused -> stringResource(R.string.detail_download_paused)
+    DownloadStatus.Failed -> stringResource(R.string.detail_download_failed)
 }
 
 @Composable
 private fun CastRow(details: Details) {
     Column(Modifier.padding(top = 26.dp)) {
-        SectionTitle("Reparto")
+        SectionTitle(stringResource(R.string.detail_cast))
         Spacer(Modifier.height(12.dp))
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             items(details.cast, key = { it.id }) { person ->

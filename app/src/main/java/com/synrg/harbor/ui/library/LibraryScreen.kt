@@ -20,8 +20,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.synrg.harbor.R
 import com.synrg.harbor.data.MediaItem
 import com.synrg.harbor.downloads.DownloadStatus
 import com.synrg.harbor.graph
@@ -41,14 +43,14 @@ fun LibraryScreen(bottomPadding: Dp, onOpen: (MediaItem) -> Unit, onDownloads: (
 
     Column(Modifier.fillMaxSize().background(HarborColors.Bg).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(start = 20.dp, top = 12.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("Mi lista", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.library_title), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
             val active = downloads.items.count { it.active }
             val done = downloads.items.count { it.status == DownloadStatus.Done }
             GlassButton(
                 when {
-                    active > 0 -> "Descargas · $active"
-                    done > 0 -> "Descargas · $done"
-                    else -> "Descargas"
+                    active > 0 -> stringResource(R.string.library_downloads_count, active)
+                    done > 0 -> stringResource(R.string.library_downloads_count, done)
+                    else -> stringResource(R.string.library_downloads)
                 },
                 HIcons.Download,
                 onDownloads,
@@ -57,8 +59,8 @@ fun LibraryScreen(bottomPadding: Dp, onOpen: (MediaItem) -> Unit, onDownloads: (
         if (items.isEmpty()) {
             Box(Modifier.fillMaxSize()) {
                 MessageBlock(
-                    "Todavía no guardaste nada",
-                    "Tocá “Agregar a mi lista” en cualquier película o serie y aparece acá.",
+                    stringResource(R.string.library_empty_title),
+                    stringResource(R.string.library_empty_body),
                     modifier = Modifier.padding(top = 60.dp),
                 )
             }

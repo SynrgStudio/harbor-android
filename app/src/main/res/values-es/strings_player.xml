@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Player screen -->
+    <string name="player_brightness">Brillo</string>
+    <string name="player_volume">Volumen</string>
+    <string name="player_locked_hint">Pantalla bloqueada · tocá acá para desbloquear</string>
+    <string name="player_next_episode">Siguiente episodio</string>
+    <string name="player_watch_now">Ver ahora</string>
+    <string name="player_watch_now_countdown">Ver ahora · %1$d</string>
+    <plurals name="player_peers_speed">
+        <item quantity="one">%1$d par · %2$s</item>
+        <item quantity="other">%1$d pares · %2$s</item>
+    </plurals>
+    <string name="player_finding_peers">Buscando pares…</string>
+    <string name="player_exit">Salir</string>
+    <string name="player_lock_screen">Bloquear pantalla</string>
+    <string name="player_audio_subtitles">Audio y subtítulos</string>
+    <string name="player_resize">Ajustar imagen</string>
+    <string name="player_pip">Ventana flotante</string>
+    <string name="player_pause">Pausa</string>
+    <string name="player_play">Reproducir</string>
+    <string name="player_skip_forward">Adelantar 10 segundos</string>
+    <string name="player_skip_back">Retroceder 10 segundos</string>
+    <string name="player_next">Siguiente</string>
+    <string name="player_data_warning_cellular">No estás conectado a Wi-Fi</string>
+    <string name="player_data_warning_metered">Esta red tiene datos limitados</string>
+    <string name="player_data_warning_body">Ver esto puede gastar varios GB de tu plan. ¿Reproducir de todos modos?</string>
+    <string name="player_play_anyway">Reproducir igual</string>
+    <string name="player_error_title">No se pudo reproducir</string>
+    <string name="player_other_stream">Otra fuente</string>
+    <string name="player_episode_label">T%1$d · E%2$d</string>
+    <string name="player_episode_label_titled">T%1$d · E%2$d — %3$s</string>
+    <string name="player_connecting_torrent">Conectando con el torrent…</string>
+    <string name="player_loading">Cargando…</string>
+    <string name="player_finding_next">Buscando el siguiente episodio…</string>
+    <string name="player_error_connection_lost">Se cortó la conexión con la fuente.</string>
+    <string name="player_error_stream_gone">La fuente ya no está disponible (enlace vencido o caído).</string>
+    <string name="player_error_cant_decode">El teléfono no puede decodificar este video. Probá otra fuente.</string>
+    <string name="player_error_unsupported_format">Formato de archivo no soportado.</string>
+    <string name="player_error_cant_open">No se pudo abrir la fuente</string>
+    <string name="player_error_no_link">La fuente no tiene enlace reproducible</string>
+    <string name="player_error_no_more_episodes">No hay más episodios disponibles.</string>
+
+    <!-- Sleep timer -->
+    <string name="sleep_timer">Temporizador</string>
+    <string name="sleep_pausing_in_seconds">Pausa en %1$d s</string>
+    <string name="sleep_pausing_in_minutes">Pausa en %1$d min</string>
+    <string name="sleep_pausing_at_end">Pausa al terminar</string>
+    <string name="sleep_hint">Baja el volumen de a poco y pausa; después la pantalla se apaga sola.</string>
+    <string name="sleep_off">Desactivado</string>
+    <plurals name="sleep_minutes">
+        <item quantity="one">%1$d minuto</item>
+        <item quantity="other">%1$d minutos</item>
+    </plurals>
+    <string name="sleep_one_hour">1 hora</string>
+    <string name="sleep_hour_and_minutes">1 h %1$d min</string>
+    <string name="sleep_end_of_episode">Al terminar este episodio</string>
+    <string name="sleep_end_of_movie">Al terminar la película</string>
+
+    <!-- Audio, subtitles and speed panel -->
+    <string name="tracks_audio">Audio</string>
+    <string name="tracks_subtitles">Subtítulos</string>
+    <string name="tracks_speed">Velocidad</string>
+    <string name="tracks_audio_not_loaded">Todavía no se cargaron las pistas de audio.</string>
+    <string name="tracks_speed_normal">Normal</string>
+    <string name="tracks_mono">Mono</string>
+    <string name="tracks_stereo">Estéreo</string>
+    <string name="tracks_forced">Forzados</string>
+    <string name="tracks_generic">Pista</string>
+
+    <!-- Subtitles -->
+    <string name="subs_off">Desactivados</string>
+    <string name="subs_online">De internet</string>
+    <string name="subs_none_online">No hay subtítulos de addons para esto.</string>
+    <string name="subs_saved">guardado</string>
+    <string name="subs_sync">Sincronía</string>
+    <string name="subs_no_offset">Sin ajuste</string>
+    <string name="subs_reset">Restablecer</string>
+    <string name="subs_sync_hint">Si aparecen antes de que hablen, sumá; si aparecen tarde, restá.</string>
+    <string name="subs_language_unknown">Desconocido</string>
+    <string name="subs_language_brazil">%1$s (Brasil)</string>
+</resources>

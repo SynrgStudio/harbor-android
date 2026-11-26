@@ -13,10 +13,10 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import com.synrg.harbor.MainActivity
 import com.synrg.harbor.R
+import com.synrg.harbor.core.Strings
 import com.synrg.harbor.graph
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 /** Keeps downloads going with the app in the background, with their progress in a notification. */
 class DownloadService : Service() {
@@ -78,32 +78,32 @@ class DownloadService : Service() {
         when {
             current != null -> {
                 val speed = downloads.speed.value[current.id]?.bps ?: 0
-                setContentTitle("Descargando ${label(current)}")
+                setContentTitle(Strings.get(R.string.notif_downloading, label(current)))
                 setContentText(
                     listOfNotNull(
                         "${(current.fraction * 100).toInt()}%",
                         if (speed > 0) formatBytes(speed) + "/s" else null,
-                        if (queued > 1) "${queued - 1} en espera" else null,
+                        if (queued > 1) Strings.get(R.string.notif_queued, queued - 1) else null,
                     ).joinToString(" · "),
                 )
                 setProgress(1000, (current.fraction * 1000).toInt(), current.total <= 0)
             }
             waiting -> {
-                setContentTitle("Descargas en espera")
-                setContentText("Siguen cuando te conectes a Wi-Fi")
+                setContentTitle(Strings.get(R.string.notif_waiting_title))
+                setContentText(Strings.get(R.string.notif_waiting_text))
             }
-            else -> setContentTitle("Preparando descargas…")
+            else -> setContentTitle(Strings.get(R.string.notif_preparing))
         }
     }.build()
 
-    /** "Listo para ver sin internet", once per download finished in this run. */
+    /** "Ready to watch offline", once per download finished in this run. */
     private fun notifyFinished() {
         val done = downloads.takeFinished()
         if (done.isEmpty()) return
-        val text = if (done.size == 1) label(done.first()) else "${done.size} descargas"
+        val text = if (done.size == 1) label(done.first()) else Strings.plural(R.plurals.notif_downloads_count, done.size, done.size)
         val notification = NotificationCompat.Builder(this, CHANNEL_DONE)
             .setSmallIcon(R.drawable.ic_stat_harbor)
-            .setContentTitle("Listo para ver sin internet")
+            .setContentTitle(Strings.get(R.string.notif_ready_title))
             .setContentText(text)
             .setContentIntent(openDownloads())
             .setAutoCancel(true)
@@ -111,14 +111,11 @@ class DownloadService : Service() {
         runCatching { NotificationManagerCompat.from(this).notify(NOTIFICATION_DONE_ID, notification) }
     }
 
+    /** Creates the channels, or renames existing ones to the current language (importance stays as the user set it). */
     private fun ensureChannels() {
         val manager = getSystemService(NotificationManager::class.java)
-        if (manager.getNotificationChannel(CHANNEL_PROGRESS) == null) {
-            manager.createNotificationChannel(NotificationChannel(CHANNEL_PROGRESS, "Descargas en curso", NotificationManager.IMPORTANCE_LOW))
-        }
-        if (manager.getNotificationChannel(CHANNEL_DONE) == null) {
-            manager.createNotificationChannel(NotificationChannel(CHANNEL_DONE, "Descargas listas", NotificationManager.IMPORTANCE_DEFAULT))
-        }
+        manager.createNotificationChannel(NotificationChannel(CHANNEL_PROGRESS, Strings.get(R.string.notif_channel_progress), NotificationManager.IMPORTANCE_LOW))
+        manager.createNotificationChannel(NotificationChannel(CHANNEL_DONE, Strings.get(R.string.notif_channel_done), NotificationManager.IMPORTANCE_DEFAULT))
     }
 
     private companion object {
@@ -128,12 +125,12 @@ class DownloadService : Service() {
         const val NOTIFICATION_DONE_ID = 7002
 
         fun label(item: DownloadItem) =
-            item.title + if (item.season != null && item.episode != null) " T${item.season}:E${item.episode}" else ""
+            item.title + if (item.season != null && item.episode != null) " " + Strings.get(R.string.common_episode_code, item.season, item.episode) else ""
     }
 }
 
 fun formatBytes(bytes: Long): String = when {
-    bytes >= 1L shl 30 -> String.format(Locale.forLanguageTag("es-AR"), "%.1f GB", bytes / (1L shl 30).toDouble())
-    bytes >= 1L shl 20 -> String.format(Locale.forLanguageTag("es-AR"), "%.1f MB", bytes / (1L shl 20).toDouble())
+    bytes >= 1L shl 30 -> String.format(Strings.locale, "%.1f GB", bytes / (1L shl 30).toDouble())
+    bytes >= 1L shl 20 -> String.format(Strings.locale, "%.1f MB", bytes / (1L shl 20).toDouble())
     else -> "${bytes / 1024} KB"
 }
