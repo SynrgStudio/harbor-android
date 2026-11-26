@@ -23,6 +23,7 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.common.Format
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
 import androidx.media3.datasource.DefaultDataSource
@@ -33,6 +34,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.synrg.harbor.data.MediaType
 import com.synrg.harbor.data.ProgressEntry
+import com.synrg.harbor.data.SubtitleChoice
 import com.synrg.harbor.data.TrackPref
 import com.synrg.harbor.graph
 import com.synrg.harbor.stremio.AddonStreams
@@ -95,6 +97,7 @@ class PlayerActivity : ComponentActivity() {
     private var autoSubtitlesDone = false
     private var subtitleLanguage = ""
     private var userPickedText = false
+    private var savedSubtitle: SubtitleChoice? = null
     private var advancing = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -191,11 +194,16 @@ class PlayerActivity : ComponentActivity() {
      * Spanish, Latin American over Castilian.
      */
     private fun applyPreferredSubtitles(tracks: Tracks) {
-        val lang = subtitleLanguage
-        val textGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT }
-        if (lang.isEmpty() || textGroups.isEmpty()) return
+        // Wait for the file's tracks (video or audio); a file may have no subtitle track at all.
+        if (tracks.groups.none { it.type == C.TRACK_TYPE_VIDEO || it.type == C.TRACK_TYPE_AUDIO }) return
         autoSubtitlesDone = true
-        val best = textGroups.flatMap { g -> (0 until g.length).filter(g::isTrackSupported).map { g to it } }
+        val embedded = tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT }
+            .flatMap { g -> (0 until g.length).filter(g::isTrackSupported).map { g to it } }
+            .filterNot { (g, i) -> g.getTrackFormat(i).id?.contains("ext-") == true }
+        if (restoreSubtitle(embedded)) return
+        val lang = subtitleLanguage
+        if (lang.isEmpty()) return
+        val best = embedded
             .filter { (g, i) -> Languages.matches(g.getTrackFormat(i).language, lang) }
             .minByOrNull { (g, i) ->
                 val f = g.getTrackFormat(i)
@@ -220,6 +228,31 @@ class PlayerActivity : ComponentActivity() {
             .build()
     }
 
+    /**
+     * Puts back the subtitle last used on this title. An internet one goes straight to its URL; a
+     * file track is matched by language and label (so the same release's next episode works too),
+     * then by position, only within the same file. True if it handled the choice.
+     */
+    private fun restoreSubtitle(embedded: List<Pair<Tracks.Group, Int>>): Boolean {
+        val saved = savedSubtitle ?: return false
+        val video = _status.value.request?.progressKey ?: return false
+        if (saved.externalUrl != null) {
+            if (saved.video != video) return false // another episode has other subtitle files
+            selectExternalSubtitle(StremioSubtitle(saved.externalId, saved.externalUrl, saved.language), auto = true)
+            return true
+        }
+        val match = embedded.firstOrNull { (g, i) ->
+            val f = g.getTrackFormat(i)
+            f.language == saved.language && f.label == saved.label
+        } ?: embedded.getOrNull(saved.index ?: -1)?.takeIf { saved.video == video }
+            ?: return false
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+            .setOverrideForType(TrackSelectionOverride(match.first.mediaTrackGroup, match.second))
+            .build()
+        return true
+    }
+
     private fun autoExternalSubtitle(lang: String) {
         val request = _status.value.request ?: return
         lifecycleScope.launch {
@@ -234,6 +267,7 @@ class PlayerActivity : ComponentActivity() {
         val pref = graph.progress.trackPref(request.type, request.tmdbId) ?: TrackPref()
         val audio = pref.audio ?: settings.audioLanguage
         subtitleLanguage = pref.subtitle ?: settings.subtitleLanguage
+        savedSubtitle = pref.subtitleChoice.takeIf { subtitleLanguage.isNotEmpty() }
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
             .clearOverrides()
             .setPreferredAudioLanguage(audio.ifEmpty { null })
@@ -248,12 +282,37 @@ class PlayerActivity : ComponentActivity() {
         graph.progress.updateTrackPref(request.type, request.tmdbId) { it.copy(audio = iso) }
     }
 
-    fun rememberSubtitle(language: String?) {
+    /** Subtitles off for this title. */
+    fun rememberSubtitlesOff() {
         val request = _status.value.request ?: return
-        val value = if (language == null) "" else Languages.toIso2(language) ?: return
         userPickedText = true
-        subtitleLanguage = value
-        graph.progress.updateTrackPref(request.type, request.tmdbId) { it.copy(subtitle = value) }
+        subtitleLanguage = ""
+        savedSubtitle = null
+        graph.progress.updateTrackPref(request.type, request.tmdbId) { it.copy(subtitle = "", subtitleChoice = null) }
+    }
+
+    /** A track of the file picked in the panel; [position] is its place among the file's subtitles. */
+    fun rememberEmbeddedSubtitle(format: Format, position: Int) {
+        val request = _status.value.request ?: return
+        userPickedText = true
+        val choice = SubtitleChoice(request.progressKey, language = format.language, label = format.label, index = position)
+        rememberChoice(request, choice, Languages.toIso2(format.language))
+    }
+
+    private fun rememberExternalSubtitle(sub: StremioSubtitle, picked: Boolean) {
+        val request = _status.value.request ?: return
+        if (picked) userPickedText = true
+        val choice = SubtitleChoice(request.progressKey, externalUrl = sub.url, externalId = sub.id, language = sub.lang)
+        // An automatic pick keeps the title's language as it was; it only pins which file it was.
+        rememberChoice(request, choice, if (picked) Languages.toIso2(sub.lang) else null)
+    }
+
+    private fun rememberChoice(request: PlaybackRequest, choice: SubtitleChoice, language: String?) {
+        savedSubtitle = choice
+        if (language != null) subtitleLanguage = language
+        graph.progress.updateTrackPref(request.type, request.tmdbId) { pref ->
+            pref.copy(subtitle = language ?: pref.subtitle, subtitleChoice = choice)
+        }
     }
 
     private fun load(intent: Intent?) {
@@ -438,7 +497,7 @@ class PlayerActivity : ComponentActivity() {
         val existing = current.localConfiguration?.subtitleConfigurations.orEmpty().filterNot { it.id == id }
         val position = player.currentPosition
         pendingSubtitleId = id
-        if (!auto) rememberSubtitle(sub.lang)
+        rememberExternalSubtitle(sub, picked = !auto)
         player.setMediaItem(current.buildUpon().setSubtitleConfigurations(existing + config).build(), position)
         player.prepare()
         player.play()

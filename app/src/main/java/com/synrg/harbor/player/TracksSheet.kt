@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -98,14 +99,15 @@ fun TracksPanel(player: Player, status: PlayerStatus, controller: PlayerActivity
     }
     var speed by remember { mutableStateOf(player.playbackParameters.speed) }
 
-    fun select(choice: TrackChoice, type: Int) {
+    fun select(choice: TrackChoice, type: Int, position: Int = 0) {
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
             .setTrackTypeDisabled(type, false)
             .setOverrideForType(TrackSelectionOverride(choice.group.mediaTrackGroup, choice.index))
             .build()
-        val lang = choice.language?.takeIf { it != "und" && it.isNotBlank() }
-        if (lang != null) {
-            if (type == C.TRACK_TYPE_AUDIO) controller.rememberAudio(lang) else controller.rememberSubtitle(lang)
+        if (type == C.TRACK_TYPE_AUDIO) {
+            choice.language?.takeIf { it != "und" && it.isNotBlank() }?.let(controller::rememberAudio)
+        } else {
+            controller.rememberEmbeddedSubtitle(choice.group.getTrackFormat(choice.index), position)
         }
         version++
     }
@@ -155,12 +157,13 @@ fun TracksPanel(player: Player, status: PlayerStatus, controller: PlayerActivity
                         Option("Desactivados", textDisabled) {
                             player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
                                 .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build()
-                            controller.rememberSubtitle(null)
+                            controller.rememberSubtitlesOff()
                             version++
                         }
                     }
-                    items(choices(tracks, C.TRACK_TYPE_TEXT).filterNot { it.group.getTrackFormat(it.index).id?.contains("ext-") == true }) { c ->
-                        Option(c.label, c.selected && !textDisabled) { select(c, C.TRACK_TYPE_TEXT) }
+                    val embedded = choices(tracks, C.TRACK_TYPE_TEXT).filterNot { it.group.getTrackFormat(it.index).id?.contains("ext-") == true }
+                    itemsIndexed(embedded) { i, c ->
+                        Option(c.label, c.selected && !textDisabled) { select(c, C.TRACK_TYPE_TEXT, i) }
                     }
                     item { SectionLabel("De internet") }
                     val external = status.externalSubs

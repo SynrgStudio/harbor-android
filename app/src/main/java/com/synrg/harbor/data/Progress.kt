@@ -57,7 +57,27 @@ data class ProgressEntry(
  * Null fields fall back to the global setting.
  */
 @Serializable
-data class TrackPref(val audio: String? = null, val subtitle: String? = null)
+data class TrackPref(
+    val audio: String? = null,
+    val subtitle: String? = null,
+    /** The exact subtitle in use, so coming back to the same video brings back that same one. */
+    val subtitleChoice: SubtitleChoice? = null,
+)
+
+/**
+ * A subtitle as picked: an internet one by its URL, or one of the file's tracks by language and
+ * label (and position, which only means something for the same file). [video] is the progress key
+ * of the movie or episode it was picked on.
+ */
+@Serializable
+data class SubtitleChoice(
+    val video: String,
+    val externalUrl: String? = null,
+    val externalId: String? = null,
+    val language: String? = null,
+    val label: String? = null,
+    val index: Int? = null,
+)
 
 @Serializable
 data class ProgressData(
