@@ -34,6 +34,6 @@ do {
     Start-Sleep -Seconds 2
     $boot = (Invoke-Adb -s $serial shell getprop sys.boot_completed 2>$null)
 } while ($boot -ne '1' -and (Get-Date) -lt $deadline)
-if ($boot -ne '1') { throw "El emulador no arrancó. Mirá .tools\emulator.err.txt" }
+if ($boot -ne '1') { throw "The emulator did not boot. See .tools\emulator.err.txt" }
 Invoke-Adb -s $serial shell settings put global window_animation_scale 1 | Out-Null
 "Listo: $serial"

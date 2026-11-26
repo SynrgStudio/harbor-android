@@ -10,9 +10,16 @@ function Find-Dir([string[]]$candidates, [string]$required) {
 
 $script:ProjectRoot = Split-Path -Parent $PSScriptRoot
 $script:JavaHome = Find-Dir @($env:JAVA_HOME, (Join-Path $env:USERPROFILE '.jdks\jdk-17.0.21.0.2+1'), (Join-Path $env:ProgramFiles 'Android\Android Studio\jbr')) 'bin\java.exe'
-$script:SdkRoot = Find-Dir @($env:ANDROID_HOME, $env:ANDROID_SDK_ROOT, (Join-Path $env:LOCALAPPDATA 'Android\Sdk')) 'platform-tools\adb.exe'
-if (-not $JavaHome) { throw 'No encontré Java 17 (definí JAVA_HOME).' }
-if (-not $SdkRoot) { throw 'No encontré el Android SDK (definí ANDROID_HOME).' }
+# sdk.dir from local.properties, as Android Studio writes it (colons and backslashes may be escaped).
+$props = Join-Path $ProjectRoot 'local.properties'
+$localSdk = $null
+if (Test-Path -LiteralPath $props) {
+    $line = Get-Content -LiteralPath $props | Where-Object { $_ -like 'sdk.dir=*' } | Select-Object -First 1
+    if ($line) { $localSdk = $line.Substring(8).Replace('\:', ':').Replace('\\', '\') }
+}
+$script:SdkRoot = Find-Dir @($env:ANDROID_HOME, $env:ANDROID_SDK_ROOT, $localSdk, (Join-Path $env:LOCALAPPDATA 'Android\Sdk')) 'platform-tools\adb.exe'
+if (-not $JavaHome) { throw 'Java 17 not found (set JAVA_HOME).' }
+if (-not $SdkRoot) { throw 'Android SDK not found (set ANDROID_HOME).' }
 
 $env:JAVA_HOME = $JavaHome
 $env:ANDROID_HOME = $SdkRoot

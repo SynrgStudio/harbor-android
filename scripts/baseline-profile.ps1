@@ -9,5 +9,5 @@ $ErrorActionPreference = 'Continue'
     Where-Object { $_ -match 'BUILD|FAIL|error|Exception|Wrote|baseline' }
 $code = $LASTEXITCODE
 $ErrorActionPreference = 'Stop'
-if ($code -ne 0) { throw 'No se pudo generar el perfil.' }
+if ($code -ne 0) { throw 'Could not generate the profile.' }
 Get-ChildItem (Join-Path $ProjectRoot 'app\src\release\generated\baselineProfiles') | Select-Object Name, Length

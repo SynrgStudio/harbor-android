@@ -3,7 +3,8 @@
 #   bash scripts/jank.sh <serial>        e.g. 192.168.1.47:38447 or emulator-5590
 set -euo pipefail
 SERIAL="${1:?serial}"
-SDK="${ANDROID_HOME:-$LOCALAPPDATA/Android/Sdk}"
+LOCAL_SDK="$(sed -n 's/^sdk\.dir=//p' "$(dirname "$0")/../local.properties" 2>/dev/null | sed 's/\\:/:/g; s/\\\\/\//g' | tr -d '\r')"
+SDK="${ANDROID_HOME:-${LOCAL_SDK:-$LOCALAPPDATA/Android/Sdk}}"
 ADB="$SDK/platform-tools/adb.exe"
 [ -x "$ADB" ] || ADB=adb
 a() { "$ADB" -s "$SERIAL" "$@"; }

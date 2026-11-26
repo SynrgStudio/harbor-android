@@ -1,0 +1,36 @@
+# Development
+
+Native Android app (Kotlin + Jetpack Compose): TMDB metadata, streams from Stremio addons and torrent streaming with librqbit.
+
+## Commands (PowerShell, from the repo root)
+
+- `.\scripts\build-native.ps1` builds the torrent engine (`native/`, Rust + librqbit) for arm64 and x86_64 into `app/src/main/jniLibs` (not in git: run it on a fresh checkout or after touching `native/`).
+- `.\scripts\emulator.ps1 [-Window]` starts the project AVD (`.tools/avd`, serial `emulator-5590`, headless by default). Start it in the foreground: if a background job launches it, the emulator dies when that job ends. It uses `-Gpu host`: with `swiftshader_indirect`, qemu crashes during the Baseline Profile run.
+- `.\scripts\run.ps1 [-Release] [-Serial <ip:port>] [-NoBuild]` builds, installs the APK for the device's ABI and opens the app. With `-Release` it also applies and compiles the Baseline Profile (for a sideloaded app, Android would only do that while the phone is idle and charging).
+- `.\scripts\baseline-profile.ps1` regenerates the Baseline Profile on the emulator (it sets `ANDROID_SERIAL` and never runs on a phone) into `app/src/release/generated/baselineProfiles`, which is committed. Regenerate it when screens or flows change. It doubles as a smoke test: if the release build doesn't start, it fails here.
+- `bash scripts/jank.sh <serial>` measures jank (gfxinfo) over a scripted scroll of Home, with the phone unlocked and a release build.
+- Phone over wireless debugging: `adb mdns services` shows the IP and ports; pair with `adb pair <ip:port> <code>`.
+- `.\scripts\release.ps1 -NotesFile notes.md` publishes a GitHub release: it builds signed APKs, checks they aren't signed with the debug key, creates the `v<versionName>` tag and uploads `Harbor-<version>-<abi>.apk`. Bump `versionCode`/`versionName` and commit first.
+- In-app updater (`update/Updater.kt`): reads GitHub's `releases/latest`, downloads the APK for the device's ABI, checks the SHA-256 GitHub reports and installs it with PackageInstaller. To test it, build an "old" copy with `.\gradlew.bat :app:assembleRelease '-Pharbor.versionCode=5' '-Pharbor.versionName=0.4.0'` (in PowerShell, `-P` arguments with a dot need quotes or they get split) and install it with `adb install -r -d`. `BuildConfig.SELF_UPDATE` turns it off for a store build.
+- `.\gradlew.bat :app:testDebugUnitTest` runs the JVM tests (`app/src/test`; today, Stremio's "watched" format against stremio-core's own examples).
+- No network or mobile data on the emulator: `adb shell svc wifi disable` leaves only the (metered) cellular network; add `svc data disable` for no internet at all.
+- Open the app the way notifications and shortcuts do: `adb shell am start -n com.synrg.harbor/.MainActivity -a com.synrg.harbor.OPEN --es type tv --ei id 456 --ei season 38` (also `.RESUME --es key movie:1726` and `.DOWNLOADS`). `MainActivity` is `singleTop` and each window has its own `links`, not a global one: a `stremio://` link opens another window, which used to swallow them.
+- Run the new-episode check by hand: `adb shell cmd jobscheduler run -f com.synrg.harbor 4201`. `am force-stop` wipes scheduled jobs (use `am kill` with the app in the background); `lastCheck` is in `files/episodes.json` (`run-as`).
+- Emulator screenshot from bash: `adb -s emulator-5590 exec-out screencap -p > shot.png` (in PowerShell 5.1 the redirect corrupts the PNG).
+
+## Rules and gotchas
+
+- `scripts/env.ps1` finds Java 17 (`~/.jdks`) and the Android SDK (`ANDROID_HOME`, `sdk.dir` in `local.properties`, or `%LOCALAPPDATA%\Android\Sdk`). `.ps1` files are UTF-8 **with BOM**, or PowerShell 5.1 mangles non-ASCII text.
+- `local.properties` (gitignored) holds `sdk.dir` and `harbor.signing.*`, which points to the release keystore (kept outside the repo). Without it, release builds are signed with the debug key. Debug and release builds have different signatures, so one won't install over the other (uninstall first). The APK carries no API keys.
+- The app ships no stream addons: it only seeds OpenSubtitles v3. Streams come with the Stremio account or from addons added by URL.
+- Metadata (`tmdb/Metadata.kt`): without a key it comes from the TMDB addon (`TmdbAddon`, tmdb.elfhosted.com, with the `{"language":…}` config in the path); with a TMDB key in Settings, straight from the API (`TmdbApi`). Both use TMDB ids, so progress and the list don't depend on the mode. The addon's extras (`genre=…`, `search=…`) are escaped like `encodeURIComponent`: a raw `&` ("Sci-Fi & Fantasy") cuts the value.
+- Stremio sync (`stremio/StremioSync.kt`): the `libraryItem` collection through api.strem.io's `datastoreGet`/`datastorePut`, keyed by IMDb id, with one playback state per title. It pulls when the app opens (at most once a minute) and pushes on pause, exit or finish, and when "My list" is toggled. Testing it writes to a real account.
+- Manual "watched" marks (`stremio/WatchedMarks.kt`): in the app, a mark is progress at the end. In Stremio, `state.watched` is a bitfield `{anchorId}:{length}:{base64(zlib)}` over the video list sorted by season, episode and release date, taken from the account's first metadata addon (like Stremio does; almost always Cinemeta): `AddonRepository.seriesVideos` + `WatchedBitfield.kt`. If the order doesn't match Stremio's, marks land on the wrong episodes.
+- Downloads (`downloads/`): one per video (id = progress key), run in `DownloadService` (a `dataSync` foreground service). Torrents download into librqbit's cache and, once complete, are moved (rename, same filesystem) to `filesDir/downloads`. `TorrentEngine.close` doesn't pause torrents "pinned" by a download. Subtitles are downloaded with the video, and the player uses them offline.
+- Mobile data (`core/Network.kt`): on a metered network, torrents upload at 16 KiB/s (the lowest limit librqbit accepts without cutting requests) and the player asks before playing.
+- Subtitle delay: `player/SubtitleDelay.kt` wraps the `TextRenderer` (it's `final`) and shifts its position. With a positive delay, a cue that already passed doesn't come back; the next one shows on time.
+- librqbit 9.1: the `http-api` feature also needs `tracing-subscriber-utils`, and `Api::new` takes 3 arguments. Kotlin only calls `NativeEngine.start`; everything else goes through the HTTP API on 127.0.0.1 (`TorrentEngine.kt`).
+- Many torrent results come without trackers: `DEFAULT_TRACKERS` in `TorrentEngine.kt` fills them in. Seed counts reported by addons can be stale; to test torrents, use a recent release.
+- Measure performance with release builds only: Compose in debug is much slower.
+- Text without an explicit color takes `LocalContentColor`, set in `HarborTheme` (there's no root `Surface`).
+- No annotation-processing dependencies (no Room/Hilt/KSP): persistent state uses `core/JsonStore.kt`.

@@ -9,7 +9,7 @@ plugins {
     alias(libs.plugins.baselineprofile)
 }
 
-// Release signing key, outside git: local.properties points to the keystore.
+// Release signing key, outside git: local.properties points to the keystore (see docs/DEVELOPMENT.md).
 // Without it (a fresh checkout), release builds fall back to the debug key.
 val localProps = Properties().apply {
     rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }

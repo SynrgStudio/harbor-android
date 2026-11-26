@@ -4,14 +4,14 @@
 #   .\scripts\build-native.ps1 -Abi arm64-v8a
 param([string[]]$Abi = @('arm64-v8a', 'x86_64'), [int]$Api = 29)
 . "$PSScriptRoot\env.ps1"
-if (-not $NdkHome) { throw 'Falta el NDK: sdkmanager --install "ndk;29.0.14206865"' }
+if (-not $NdkHome) { throw 'The NDK is missing: sdkmanager --install "ndk;29.0.14206865"' }
 $cargo = Join-Path $env:USERPROFILE '.cargo\bin\cargo.exe'
 $bin = Join-Path $NdkHome 'toolchains\llvm\prebuilt\windows-x86_64\bin'
 $targets = @{ 'arm64-v8a' = 'aarch64-linux-android'; 'x86_64' = 'x86_64-linux-android' }
 
 foreach ($a in $Abi) {
     $t = $targets[$a]
-    if (-not $t) { throw "ABI no soportada: $a" }
+    if (-not $t) { throw "Unsupported ABI: $a" }
     $clang = Join-Path $bin "$t$Api-clang.cmd"
     $envName = $t.ToUpper().Replace('-', '_')
     Set-Item "env:CARGO_TARGET_${envName}_LINKER" $clang
@@ -23,7 +23,7 @@ foreach ($a in $Abi) {
         ForEach-Object { "$_" } | Where-Object { $_ -notmatch '^\s+(Compiling|Downloaded|Downloading) ' }
     $code = $LASTEXITCODE
     $ErrorActionPreference = 'Stop'
-    if ($code -ne 0) { throw "Falló la compilación para $a" }
+    if ($code -ne 0) { throw "Build failed for $a" }
     $out = Join-Path $ProjectRoot "app\src\main\jniLibs\$a"
     New-Item -ItemType Directory -Force $out | Out-Null
     Copy-Item (Join-Path $ProjectRoot "native\target\$t\release\libharbor_torrent.so") $out -Force
