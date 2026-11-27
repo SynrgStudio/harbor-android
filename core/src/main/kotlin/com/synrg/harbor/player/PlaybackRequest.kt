@@ -1,12 +1,14 @@
 package com.synrg.harbor.player
 
-import com.synrg.harbor.R
-import com.synrg.harbor.core.Strings
+import androidx.compose.runtime.Immutable
+import com.synrg.harbor.core.CoreStrings
+import com.synrg.harbor.core.CoreText
 import com.synrg.harbor.data.MediaType
 import com.synrg.harbor.data.ProgressEntry
 import com.synrg.harbor.data.SavedStream
 import kotlinx.serialization.Serializable
 
+@Immutable
 @Serializable
 data class PlaybackRequest(
     val type: MediaType,
@@ -49,7 +51,7 @@ data class PlaybackRequest(
     val displaySubtitle: String?
         get() = when {
             season == null || episode == null -> null
-            episodeTitle != null -> Strings.get(R.string.player_episode_label_titled, season, episode, episodeTitle)
-            else -> Strings.get(R.string.player_episode_label, season, episode)
+            episodeTitle != null -> CoreStrings.get(CoreText.PlayerEpisodeLabelTitled, season, episode, episodeTitle)
+            else -> CoreStrings.get(CoreText.PlayerEpisodeLabel, season, episode)
         }
 }

@@ -1,10 +1,12 @@
 package com.synrg.harbor.stremio
 
+import androidx.compose.runtime.Immutable
 import com.synrg.harbor.data.MediaType
 import com.synrg.harbor.data.ProgressEntry
 import com.synrg.harbor.data.ProgressRepository
 
 /** A title as marking it watched needs it. */
+@Immutable
 data class MarkTitle(
     val type: MediaType,
     val tmdbId: Int,
@@ -16,6 +18,7 @@ data class MarkTitle(
 )
 
 /** The movie itself (no season/episode) or one episode. */
+@Immutable
 data class MarkVideo(
     val season: Int? = null,
     val episode: Int? = null,

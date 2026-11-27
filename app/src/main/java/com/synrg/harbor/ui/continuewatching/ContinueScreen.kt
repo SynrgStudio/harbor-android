@@ -254,9 +254,11 @@ private fun ContinueRow(entry: ProgressEntry, onClick: () -> Unit, onDetails: ()
         }
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
             Text(entry.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (entry.season != null && entry.episode != null) {
+            val seasonNo = entry.season
+            val episodeNo = entry.episode
+            if (seasonNo != null && episodeNo != null) {
                 Text(
-                    stringResource(R.string.continue_episode_label, entry.season, entry.episode) + (entry.episodeTitle?.let { " — $it" } ?: ""),
+                    stringResource(R.string.continue_episode_label, seasonNo, episodeNo) + (entry.episodeTitle?.let { " — $it" } ?: ""),
                     style = MaterialTheme.typography.bodySmall,
                     color = HarborColors.TextDim,
                     maxLines = 1,

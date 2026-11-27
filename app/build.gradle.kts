@@ -103,6 +103,7 @@ baselineProfile {
 
 dependencies {
     baselineProfile(project(":baselineprofile"))
+    implementation(project(":core"))
     implementation(libs.androidx.core)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
@@ -130,6 +131,4 @@ dependencies {
     implementation(libs.haze)
     // Chromecast. Started only when the user opens "Play on a TV" (cast/GoogleCast.kt).
     implementation(libs.play.services.cast.framework)
-
-    testImplementation(libs.junit)
 }

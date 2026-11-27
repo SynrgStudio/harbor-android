@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.synrg.harbor.R
 import com.synrg.harbor.core.AppGraph
 import com.synrg.harbor.core.Strings
+import com.synrg.harbor.core.res
 import com.synrg.harbor.data.HeroItem
 import com.synrg.harbor.data.MediaItem
 import com.synrg.harbor.data.ProgressEntry
@@ -93,7 +94,7 @@ class HomeViewModel(private val graph: AppGraph) : ViewModel() {
             launch {
                 runCatching { def.load() }
                     .onSuccess { items ->
-                        val row = HomeRow(def.key, def.title, items.filter { it.posterPath != null })
+                        val row = HomeRow(def.key, def.title.res, items.filter { it.posterPath != null })
                         _state.update { s ->
                             if (s.rows.getOrNull(index) == row) s
                             else s.copy(rows = s.rows.toMutableList().also { it[index] = row })

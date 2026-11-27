@@ -314,12 +314,13 @@ class PlayerActivity : ComponentActivity() {
     private fun restoreSubtitle(embedded: List<Pair<Tracks.Group, Int>>): Boolean {
         val saved = savedSubtitle ?: return false
         val video = _status.value.request?.progressKey ?: return false
-        if (saved.externalUrl != null) {
+        val externalUrl = saved.externalUrl
+        if (externalUrl != null) {
             if (saved.video != video) return false // another episode has other subtitle files
             // A download carries its subtitles: use the saved file, it works offline.
-            val local = graph.downloads.get(video)?.subtitles?.firstOrNull { it.source == saved.externalUrl }
+            val local = graph.downloads.get(video)?.subtitles?.firstOrNull { it.source == externalUrl }
                 ?.takeIf { _status.value.request?.isLocal == true }
-            selectExternalSubtitle(StremioSubtitle(saved.externalId, local?.url ?: saved.externalUrl, saved.language), auto = true)
+            selectExternalSubtitle(StremioSubtitle(saved.externalId, local?.url ?: externalUrl, saved.language), auto = true)
             return true
         }
         val match = embedded.firstOrNull { (g, i) ->

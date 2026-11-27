@@ -1,7 +1,7 @@
 package com.synrg.harbor.player
 
-import com.synrg.harbor.R
-import com.synrg.harbor.core.Strings
+import com.synrg.harbor.core.CoreStrings
+import com.synrg.harbor.core.CoreText
 import java.util.Locale
 
 /** Stremio subtitle addons use ISO 639-2 ("spa", "eng", "pob"); the player wants ISO 639-1. */
@@ -24,10 +24,10 @@ object Languages {
 
     /** The language's name in the app's language, e.g. "Spanish" or "Español". */
     fun label(lang: String?): String {
-        val code = toIso2(lang) ?: return Strings.get(R.string.subs_language_unknown)
-        val locale = Strings.locale
+        val code = toIso2(lang) ?: return CoreStrings.get(CoreText.SubsLanguageUnknown)
+        val locale = CoreStrings.locale
         val name = Locale.forLanguageTag(code).getDisplayLanguage(locale)
         val nice = (if (name.isNullOrBlank() || name == code) lang ?: code else name).replaceFirstChar { it.titlecase(locale) }
-        return if (lang.equals("pob", true) || lang.equals("pt-br", true)) Strings.get(R.string.subs_language_brazil, nice) else nice
+        return if (lang.equals("pob", true) || lang.equals("pt-br", true)) CoreStrings.get(CoreText.SubsLanguageBrazil, nice) else nice
     }
 }

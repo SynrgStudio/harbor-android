@@ -1,8 +1,9 @@
 package com.synrg.harbor.stremio
 
-import com.synrg.harbor.R
+import androidx.compose.runtime.Immutable
+import com.synrg.harbor.core.CoreStrings
+import com.synrg.harbor.core.CoreText
 import com.synrg.harbor.core.HttpException
-import com.synrg.harbor.core.Strings
 import com.synrg.harbor.core.await
 import com.synrg.harbor.data.AddonEntry
 import com.synrg.harbor.data.AddonResource
@@ -50,6 +51,7 @@ sealed interface AddonStreams {
 }
 
 /** One video of a series as a metadata addon lists it. */
+@Immutable
 data class SeriesVideo(val id: String, val season: Int?, val episode: Int?, val released: Long?)
 
 class AddonRepository(
@@ -108,7 +110,7 @@ class AddonRepository(
     private suspend fun getText(url: String): String {
         val response = http.newCall(Request.Builder().url(url).build()).await()
         return response.use {
-            if (!it.isSuccessful) throw HttpException(it.code, Strings.get(R.string.stremio_addon_responded, it.code))
+            if (!it.isSuccessful) throw HttpException(it.code, CoreStrings.get(CoreText.StremioAddonResponded, it.code))
             withContext(Dispatchers.IO) { it.body.string() }
         }
     }
@@ -181,7 +183,7 @@ class AddonRepository(
                 send(
                     result.fold(
                         onSuccess = { AddonStreams.Loaded(addon, it) },
-                        onFailure = { AddonStreams.Failed(addon, it.message ?: Strings.get(R.string.stremio_no_response)) },
+                        onFailure = { AddonStreams.Failed(addon, it.message ?: CoreStrings.get(CoreText.StremioNoResponse)) },
                     ),
                 )
             }

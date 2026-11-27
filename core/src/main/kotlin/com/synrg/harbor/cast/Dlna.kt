@@ -1,6 +1,6 @@
 package com.synrg.harbor.cast
 
-import android.net.wifi.WifiManager
+import androidx.compose.runtime.Immutable
 import com.synrg.harbor.core.await
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -20,14 +20,18 @@ import java.net.MulticastSocket
 import java.net.SocketTimeoutException
 
 /** A TV (or any UPnP media renderer) on the network, with the address that takes its commands. */
+@Immutable
 data class DlnaDevice(val udn: String, val name: String, val avTransport: String)
 
 /**
  * DLNA, the open standard most smart TVs speak (Samsung, LG, Sony, Philips, Hisense…): SSDP to
  * find them on the Wi-Fi, then UPnP's AVTransport over plain HTTP + SOAP to play, pause, seek and
  * read the position. The TV fetches the video from [LanServer].
+ *
+ * [holdMulticast] takes whatever the platform needs to receive multicast while searching (Android's
+ * MulticastLock) and returns what lets it go; null when nothing is needed.
  */
-class Dlna(private val http: OkHttpClient, private val multicastLock: () -> WifiManager.MulticastLock? = { null }) {
+class Dlna(private val http: OkHttpClient, private val holdMulticast: () -> AutoCloseable? = { null }) {
     /** Asks the network for media renderers for [timeoutMs] and describes each one that answers. */
     suspend fun discover(timeoutMs: Int = 3_000): List<DlnaDevice> = coroutineScope {
         val locations = withContext(Dispatchers.IO) { search(timeoutMs) }
@@ -36,7 +40,7 @@ class Dlna(private val http: OkHttpClient, private val multicastLock: () -> Wifi
 
     private fun search(timeoutMs: Int): Set<String> {
         // Without it, some phones drop the answers of the multicast search.
-        val lock = multicastLock()?.apply { setReferenceCounted(false); acquire() }
+        val hold = holdMulticast()
         val found = LinkedHashSet<String>()
         try {
             MulticastSocket(null).use { socket ->
@@ -62,13 +66,13 @@ class Dlna(private val http: OkHttpClient, private val multicastLock: () -> Wifi
                 }
             }
         } finally {
-            runCatching { lock?.release() }
+            runCatching { hold?.close() }
         }
         return found
     }
 
     /** Reads the device description: its name, id and the AVTransport control address. */
-    internal suspend fun describe(location: String): DlnaDevice? {
+    suspend fun describe(location: String): DlnaDevice? {
         val xml = http.newCall(Request.Builder().url(location).build()).await().use { if (it.isSuccessful) it.body.string() else return null }
         val name = tag(xml, "friendlyName") ?: return null
         val udn = tag(xml, "UDN") ?: location

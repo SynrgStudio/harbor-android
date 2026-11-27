@@ -1,8 +1,8 @@
 package com.synrg.harbor.tmdb
 
-import com.synrg.harbor.R
+import com.synrg.harbor.core.CoreStrings
+import com.synrg.harbor.core.CoreText
 import com.synrg.harbor.core.HttpException
-import com.synrg.harbor.core.Strings
 import com.synrg.harbor.core.await
 import com.synrg.harbor.data.CastMember
 import com.synrg.harbor.data.Details
@@ -12,9 +12,9 @@ import com.synrg.harbor.data.MediaType
 import com.synrg.harbor.data.Person
 import com.synrg.harbor.data.Saga
 import com.synrg.harbor.data.SeasonInfo
+import com.synrg.harbor.data.SettingsRepository
 import com.synrg.harbor.data.WatchProvider
 import com.synrg.harbor.data.WatchProviders
-import com.synrg.harbor.data.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import okhttp3.CacheControl
@@ -71,7 +71,7 @@ class TmdbApi(
         val response = http.newCall(request).await()
         return withContext(Dispatchers.Default) {
             response.use {
-                if (!it.isSuccessful) throw HttpException(it.code, Strings.get(R.string.meta_error_tmdb, it.code))
+                if (!it.isSuccessful) throw HttpException(it.code, CoreStrings.get(CoreText.MetaErrorTmdb, it.code))
                 json.decodeFromString(strategy, it.body.string())
             }
         }
@@ -144,7 +144,7 @@ class TmdbApi(
             genres = d.genres.map { it.name },
             runtime = d.runtime ?: d.episodeRunTime.firstOrNull(),
             seasons = d.seasons.filter { it.seasonNumber > 0 && it.episodeCount > 0 }
-                .map { SeasonInfo(it.seasonNumber, it.name ?: Strings.get(R.string.common_season_n, it.seasonNumber), it.episodeCount) },
+                .map { SeasonInfo(it.seasonNumber, it.name ?: CoreStrings.get(CoreText.CommonSeasonN, it.seasonNumber), it.episodeCount) },
             cast = d.credits?.cast.orEmpty().take(20).map { CastMember(it.id, it.name, it.character, it.profilePath, personId = it.id) },
             recommendations = d.recommendations?.results.orEmpty().mapNotNull { it.toMediaItem(type) }.filter { it.posterPath != null },
             imdbId = d.imdbId ?: d.externalIds?.imdbId,
@@ -221,7 +221,7 @@ class TmdbApi(
             Episode(
                 season = it.seasonNumber,
                 number = it.episodeNumber,
-                name = it.name?.takeIf(String::isNotBlank) ?: Strings.get(R.string.common_episode_n, it.episodeNumber),
+                name = it.name?.takeIf(String::isNotBlank) ?: CoreStrings.get(CoreText.CommonEpisodeN, it.episodeNumber),
                 overview = it.overview.orEmpty(),
                 stillPath = it.stillPath,
                 runtime = it.runtime,

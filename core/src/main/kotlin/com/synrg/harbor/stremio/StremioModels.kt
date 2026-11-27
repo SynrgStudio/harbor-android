@@ -1,5 +1,6 @@
 package com.synrg.harbor.stremio
 
+import androidx.compose.runtime.Immutable
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -35,5 +36,6 @@ data class ProxyHeaders(val request: Map<String, String>? = null)
 @Serializable
 data class SubtitlesResponse(val subtitles: List<StremioSubtitle> = emptyList())
 
+@Immutable
 @Serializable
 data class StremioSubtitle(val id: String? = null, val url: String, val lang: String? = null)

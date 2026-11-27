@@ -300,16 +300,18 @@ class DetailViewModel(
         val details = _state.value.details ?: return null
         val latest = progress.value.values.maxByOrNull { it.updatedAt }
         return run {
-            if (latest?.season != null && latest.episode != null) {
+            val season = latest?.season
+            val episode = latest?.episode
+            if (latest != null && season != null && episode != null) {
                 if (!latest.finished) {
-                    episodeTarget(latest.season, latest.episode)
+                    episodeTarget(season, episode)
                 } else {
-                    val eps = runCatching { graph.meta.season(id, latest.season) }.getOrDefault(emptyList())
-                    val next = eps.firstOrNull { it.number == latest.episode + 1 }
+                    val eps = runCatching { graph.meta.season(id, season) }.getOrDefault(emptyList())
+                    val next = eps.firstOrNull { it.number == episode + 1 }
                     when {
                         next != null -> StreamTarget(next.season, next.number, next.name, next.stillPath)
-                        else -> details.seasons.firstOrNull { it.number > latest.season }?.let { episodeTarget(it.number, 1) }
-                            ?: episodeTarget(latest.season, latest.episode)
+                        else -> details.seasons.firstOrNull { it.number > season }?.let { episodeTarget(it.number, 1) }
+                            ?: episodeTarget(season, episode)
                     }
                 }
             } else {
@@ -357,17 +359,18 @@ class DetailViewModel(
 
     /** The stream the title was last played with (not a download): its release is preferred for the next ones. */
     private fun lastStreamOfTitle(): SavedStream? = progress.value.values
-        .filter { it.lastStream != null && it.lastStream.url?.startsWith("file:") != true }
+        .filter { val stream = it.lastStream; stream != null && stream.url?.startsWith("file:") != true }
         .maxByOrNull { it.updatedAt }?.lastStream
 
     fun mainButtonLabel(progress: Map<String, ProgressEntry>): String {
         val latest = progress.values.maxByOrNull { it.updatedAt } ?: return Strings.get(R.string.detail_play_now)
+        val season = latest.season
         return when {
             type == MediaType.Movie && !latest.finished -> Strings.get(R.string.detail_resume_movie, latest.remainingMin)
             type == MediaType.Movie -> Strings.get(R.string.detail_watch_again)
-            latest.season != null && !latest.finished ->
-                Strings.get(R.string.detail_resume_episode, Strings.get(R.string.common_episode_code, latest.season, latest.episode ?: 0))
-            latest.season != null -> Strings.get(R.string.detail_next_episode)
+            season != null && !latest.finished ->
+                Strings.get(R.string.detail_resume_episode, Strings.get(R.string.common_episode_code, season, latest.episode ?: 0))
+            season != null -> Strings.get(R.string.detail_next_episode)
             else -> Strings.get(R.string.detail_play_now)
         }
     }

@@ -190,9 +190,11 @@ fun ContinueCard(entry: ProgressEntry, onClick: () -> Unit) {
         }
         Spacer(Modifier.height(8.dp))
         Text(entry.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (entry.season != null && entry.episode != null) {
+        val seasonNo = entry.season
+        val episodeNo = entry.episode
+        if (seasonNo != null && episodeNo != null) {
             Text(
-                stringResource(R.string.common_episode_code, entry.season, entry.episode) + (entry.episodeTitle?.let { "  $it" } ?: ""),
+                stringResource(R.string.common_episode_code, seasonNo, episodeNo) + (entry.episodeTitle?.let { "  $it" } ?: ""),
                 style = MaterialTheme.typography.bodySmall,
                 color = HarborColors.TextDim,
                 maxLines = 1,

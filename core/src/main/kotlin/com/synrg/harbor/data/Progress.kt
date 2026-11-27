@@ -62,6 +62,7 @@ data class ProgressEntry(
  * Audio/subtitle choice remembered per title. Languages are ISO 639-1; [subtitle] "" means off.
  * Null fields fall back to the global setting.
  */
+@Immutable
 @Serializable
 data class TrackPref(
     val audio: String? = null,
@@ -77,9 +78,11 @@ data class TrackPref(
 )
 
 /** An intro that starts around [startMs] and lasts [lengthMs]; the "Skip intro" button jumps [lengthMs]. */
+@Immutable
 @Serializable
 data class IntroSkip(val startMs: Long, val lengthMs: Long)
 
+@Immutable
 @Serializable
 data class SubtitleShift(val video: String, val ms: Long)
 
@@ -88,6 +91,7 @@ data class SubtitleShift(val video: String, val ms: Long)
  * label (and position, which only means something for the same file). [video] is the progress key
  * of the movie or episode it was picked on.
  */
+@Immutable
 @Serializable
 data class SubtitleChoice(
     val video: String,

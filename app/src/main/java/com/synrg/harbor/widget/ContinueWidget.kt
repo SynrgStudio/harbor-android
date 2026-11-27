@@ -97,8 +97,10 @@ class ContinueWidget : AppWidgetProvider() {
 
         private fun subtitle(entry: ProgressEntry): String {
             val left = if (entry.remainingMin > 0) Strings.get(R.string.continue_remaining, entry.remainingMin) else Strings.get(R.string.continue_almost_done)
-            return if (entry.season != null && entry.episode != null) {
-                Strings.get(R.string.common_episode_code, entry.season, entry.episode) + "  ·  " + left
+            val season = entry.season
+            val episode = entry.episode
+            return if (season != null && episode != null) {
+                Strings.get(R.string.common_episode_code, season, episode) + "  ·  " + left
             } else left
         }
 

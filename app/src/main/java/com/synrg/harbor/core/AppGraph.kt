@@ -1,6 +1,7 @@
 package com.synrg.harbor.core
 
 import android.app.Application
+import com.synrg.harbor.BuildConfig
 import com.synrg.harbor.cast.CastManager
 import com.synrg.harbor.data.ProgressData
 import com.synrg.harbor.downloads.AutoDownloads
@@ -64,13 +65,16 @@ class AppGraph(val app: Application) {
         http.newBuilder().cache(null).readTimeout(60, TimeUnit.SECONDS).build()
     }
 
+    /** How the app introduces itself to services that ask for it (Wikidata). */
+    private val userAgent = "Harbor/${BuildConfig.VERSION_NAME} (https://github.com/SynrgStudio/harbor-android)"
+
     val settings: SettingsRepository by lazy { SettingsRepository(store("settings.json", Settings.serializer(), Settings())) }
     val progress: ProgressRepository by lazy { ProgressRepository(store("progress.json", ProgressData.serializer(), ProgressData())) }
     val watchlist: WatchlistRepository by lazy { WatchlistRepository(store("watchlist.json", WatchlistData.serializer(), WatchlistData())) }
     val watchLog: WatchLogRepository by lazy { WatchLogRepository(store("watchlog.json", WatchLog.serializer(), WatchLog())) }
     val backup: Backup by lazy { Backup(this) }
 
-    val meta: Metadata by lazy { Metadata(settings, TmdbApi(http, json, settings), TmdbAddon(http, json, settings), Wikidata(http, json)) }
+    val meta: Metadata by lazy { Metadata(settings, TmdbApi(http, json, settings), TmdbAddon(http, json, settings), Wikidata(http, json, userAgent)) }
     val addons: AddonRepository by lazy { AddonRepository(http, json, settings) }
     val stremio: StremioAccount by lazy { StremioAccount(http, json, settings, addons) }
     val sync: StremioSync by lazy { StremioSync(stremio, addons, settings, progress, watchlist, meta, scope) }

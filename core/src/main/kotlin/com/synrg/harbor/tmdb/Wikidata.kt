@@ -1,6 +1,6 @@
 package com.synrg.harbor.tmdb
 
-import com.synrg.harbor.BuildConfig
+import androidx.compose.runtime.Immutable
 import com.synrg.harbor.core.await
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -15,8 +15,10 @@ import okhttp3.Request
  * Sagas without a TMDB key: Wikidata knows which film series a movie is part of ("part of the
  * series") and every film's TMDB id, with no key and no account. A movie can be in several series
  * (a trilogy and a wider franchise); the smallest one is the saga.
+ *
+ * [userAgent] names the app and a way to reach its authors, as Wikidata's query service asks.
  */
-class Wikidata(private val http: OkHttpClient, private val json: Json) {
+class Wikidata(private val http: OkHttpClient, private val json: Json, private val userAgent: String) {
     /** A saga's name in [language] (ISO 639-1) and its movies as TMDB ids, in release order. */
     class SagaRef(val name: String, val tmdbIds: List<Int>)
 
@@ -60,6 +62,7 @@ class Wikidata(private val http: OkHttpClient, private val json: Json) {
      * A title a person worked on, from Wikidata: its TMDB id, its name (blank when Wikidata has
      * none in the language or in English; the addon fills it in), and how known it is.
      */
+    @Immutable
     class Work(val type: MediaType, val tmdbId: Int, val title: String, val year: String?, val fame: Int)
 
     /**
@@ -112,7 +115,7 @@ class Wikidata(private val http: OkHttpClient, private val json: Json) {
         val request = Request.Builder().url(url)
             .header("Accept", "application/sparql-results+json")
             // Wikidata asks every client to say what it is.
-            .header("User-Agent", "Harbor/${BuildConfig.VERSION_NAME} (https://github.com/SynrgStudio/harbor-android)")
+            .header("User-Agent", userAgent)
             .build()
         return http.newCall(request).await().use { response ->
             if (!response.isSuccessful) return null

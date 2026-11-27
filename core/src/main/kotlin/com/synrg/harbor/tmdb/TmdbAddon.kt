@@ -1,8 +1,8 @@
 package com.synrg.harbor.tmdb
 
-import com.synrg.harbor.R
+import com.synrg.harbor.core.CoreStrings
+import com.synrg.harbor.core.CoreText
 import com.synrg.harbor.core.HttpException
-import com.synrg.harbor.core.Strings
 import com.synrg.harbor.core.await
 import com.synrg.harbor.data.CastMember
 import com.synrg.harbor.data.Details
@@ -59,7 +59,7 @@ class TmdbAddon(
         val response = http.newCall(request).await()
         return withContext(Dispatchers.Default) {
             response.use {
-                if (!it.isSuccessful) throw HttpException(it.code, Strings.get(R.string.meta_error_server, it.code))
+                if (!it.isSuccessful) throw HttpException(it.code, CoreStrings.get(CoreText.MetaErrorServer, it.code))
                 json.decodeFromString(strategy, it.body.string())
             }
         }
@@ -112,7 +112,7 @@ class TmdbAddon(
         val key = "${settings.current.language}:${type.stremio}:$id"
         metaCache[key]?.let { return it }
         val meta = get(url("meta", type.stremio, "tmdb:$id.json"), AddonMetaResponse.serializer()).meta
-            ?: throw IOException(Strings.get(R.string.meta_error_not_found))
+            ?: throw IOException(CoreStrings.get(CoreText.MetaErrorNotFound))
         // Only network answers are kept in memory, so a stale cached copy gets refreshed later.
         if (currentCoroutineContext()[CacheOnly.Key] == null) metaCache[key] = meta
         return meta
@@ -130,9 +130,9 @@ class TmdbAddon(
 
     suspend fun details(type: MediaType, id: Int): Details {
         val m = meta(type, id)
-        val item = m.toMediaItem(type) ?: throw IOException(Strings.get(R.string.meta_error_incomplete))
+        val item = m.toMediaItem(type) ?: throw IOException(CoreStrings.get(CoreText.MetaErrorIncomplete))
         val seasons = m.episodes().filter { it.season > 0 }.groupBy { it.season }.toSortedMap()
-            .map { (n, eps) -> SeasonInfo(n, Strings.get(R.string.common_season_n, n), eps.size) }
+            .map { (n, eps) -> SeasonInfo(n, CoreStrings.get(CoreText.CommonSeasonN, n), eps.size) }
         return Details(
             item = item,
             tagline = null,
@@ -166,7 +166,7 @@ class TmdbAddon(
         Episode(
             season = season,
             number = number,
-            name = v.name?.takeIf(String::isNotBlank) ?: v.title?.takeIf(String::isNotBlank) ?: Strings.get(R.string.common_episode_n, number),
+            name = v.name?.takeIf(String::isNotBlank) ?: v.title?.takeIf(String::isNotBlank) ?: CoreStrings.get(CoreText.CommonEpisodeN, number),
             overview = v.overview ?: v.description ?: "",
             stillPath = tmdbPath(v.thumbnail),
             runtime = parseRuntime(v.runtime),

@@ -292,9 +292,11 @@ private fun Header(person: Person) {
             else -> person.department
         }
         val born = person.birthday?.let { formatDate(it, locale) }
+        val deathday = person.deathday
+        val birthplace = person.birthplace
         val life = when {
-            born != null && person.deathday != null -> stringResource(R.string.person_lived, born, formatDate(person.deathday, locale))
-            born != null && person.birthplace != null -> stringResource(R.string.person_born_in, born, person.birthplace)
+            born != null && deathday != null -> stringResource(R.string.person_lived, born, formatDate(deathday, locale))
+            born != null && birthplace != null -> stringResource(R.string.person_born_in, born, birthplace)
             born != null -> stringResource(R.string.person_born, born)
             else -> null
         }

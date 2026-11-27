@@ -1,7 +1,6 @@
 package com.synrg.harbor.tmdb
 
-import androidx.annotation.StringRes
-import com.synrg.harbor.R
+import com.synrg.harbor.core.CoreText
 import com.synrg.harbor.data.Details
 import com.synrg.harbor.data.Episode
 import com.synrg.harbor.data.MediaItem
@@ -15,8 +14,8 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 
-/** A Home row: [title] is a string resource, so it follows the app language even on a kept ViewModel. */
-class HomeRowSpec(val key: String, @StringRes val title: Int, val load: suspend () -> List<MediaItem>)
+/** A Home row: [title] is translated by the app when shown, so it follows the app language even on a kept ViewModel. */
+class HomeRowSpec(val key: String, val title: CoreText, val load: suspend () -> List<MediaItem>)
 
 /**
  * Where titles, images and episodes come from. Without a key (the default) the TMDB addon answers;
@@ -102,25 +101,25 @@ class Metadata(
         }
 
     private fun addonRows(): List<HomeRowSpec> = listOf(
-        HomeRowSpec("trending", R.string.meta_row_trending) { addon.trending().drop(6) },
-        HomeRowSpec("movies", R.string.meta_row_popular_movies) { addon.catalog(MediaType.Movie, "tmdb.top") },
-        HomeRowSpec("series", R.string.meta_row_popular_series) { addon.catalog(MediaType.Tv, "tmdb.top") },
-        HomeRowSpec("cinema", R.string.meta_row_new_releases) { addon.catalog(MediaType.Movie, "tmdb.latest") },
-        HomeRowSpec("anime", R.string.meta_row_anime) {
+        HomeRowSpec("trending", CoreText.MetaRowTrending) { addon.trending().drop(6) },
+        HomeRowSpec("movies", CoreText.MetaRowPopularMovies) { addon.catalog(MediaType.Movie, "tmdb.top") },
+        HomeRowSpec("series", CoreText.MetaRowPopularSeries) { addon.catalog(MediaType.Tv, "tmdb.top") },
+        HomeRowSpec("cinema", CoreText.MetaRowNewReleases) { addon.catalog(MediaType.Movie, "tmdb.latest") },
+        HomeRowSpec("anime", CoreText.MetaRowAnime) {
             addon.catalog(MediaType.Tv, "tmdb.language", "genre" to "Japanese").filter { addonGenres.animation in it.genres }
         },
-        HomeRowSpec("new_series", R.string.meta_row_new_series) { addon.catalog(MediaType.Tv, "tmdb.latest") },
-        HomeRowSpec("scifi", R.string.meta_row_scifi) { addon.catalog(MediaType.Movie, "tmdb.top", "genre" to addonGenres.sciFi) },
-        HomeRowSpec("comedy", R.string.meta_row_comedy) { addon.catalog(MediaType.Movie, "tmdb.top", "genre" to addonGenres.comedy) },
-        HomeRowSpec("horror", R.string.meta_row_horror) { addon.catalog(MediaType.Movie, "tmdb.top", "genre" to addonGenres.horror) },
+        HomeRowSpec("new_series", CoreText.MetaRowNewSeries) { addon.catalog(MediaType.Tv, "tmdb.latest") },
+        HomeRowSpec("scifi", CoreText.MetaRowScifi) { addon.catalog(MediaType.Movie, "tmdb.top", "genre" to addonGenres.sciFi) },
+        HomeRowSpec("comedy", CoreText.MetaRowComedy) { addon.catalog(MediaType.Movie, "tmdb.top", "genre" to addonGenres.comedy) },
+        HomeRowSpec("horror", CoreText.MetaRowHorror) { addon.catalog(MediaType.Movie, "tmdb.top", "genre" to addonGenres.horror) },
     )
 
     private fun directRows(): List<HomeRowSpec> = listOf(
-        HomeRowSpec("trending", R.string.meta_row_trending) { api.trending().drop(6) },
-        HomeRowSpec("movies", R.string.meta_row_popular_movies) { api.list(MediaType.Movie, "popular") },
-        HomeRowSpec("series", R.string.meta_row_popular_series) { api.list(MediaType.Tv, "popular") },
-        HomeRowSpec("cinema", R.string.meta_row_now_playing) { api.list(MediaType.Movie, "now_playing") },
-        HomeRowSpec("anime", R.string.meta_row_anime) {
+        HomeRowSpec("trending", CoreText.MetaRowTrending) { api.trending().drop(6) },
+        HomeRowSpec("movies", CoreText.MetaRowPopularMovies) { api.list(MediaType.Movie, "popular") },
+        HomeRowSpec("series", CoreText.MetaRowPopularSeries) { api.list(MediaType.Tv, "popular") },
+        HomeRowSpec("cinema", CoreText.MetaRowNowPlaying) { api.list(MediaType.Movie, "now_playing") },
+        HomeRowSpec("anime", CoreText.MetaRowAnime) {
             api.discover(
                 MediaType.Tv,
                 "with_genres" to "16",
@@ -129,8 +128,8 @@ class Metadata(
                 "vote_count.gte" to "50",
             )
         },
-        HomeRowSpec("top_movies", R.string.meta_row_top_movies) { api.list(MediaType.Movie, "top_rated") },
-        HomeRowSpec("top_series", R.string.meta_row_top_series) { api.list(MediaType.Tv, "top_rated") },
-        HomeRowSpec("airing", R.string.meta_row_airing) { api.list(MediaType.Tv, "on_the_air") },
+        HomeRowSpec("top_movies", CoreText.MetaRowTopMovies) { api.list(MediaType.Movie, "top_rated") },
+        HomeRowSpec("top_series", CoreText.MetaRowTopSeries) { api.list(MediaType.Tv, "top_rated") },
+        HomeRowSpec("airing", CoreText.MetaRowAiring) { api.list(MediaType.Tv, "on_the_air") },
     )
 }

@@ -1,11 +1,13 @@
 package com.synrg.harbor.data
 
+import androidx.compose.runtime.Immutable
 import com.synrg.harbor.core.JsonStore
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.Serializable
 import java.time.LocalDate
 
 /** Time spent on one title, for the stats' "most watched". */
+@Immutable
 @Serializable
 data class TitleTime(
     val type: MediaType,

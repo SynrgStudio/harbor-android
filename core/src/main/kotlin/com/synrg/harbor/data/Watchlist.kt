@@ -1,5 +1,6 @@
 package com.synrg.harbor.data
 
+import androidx.compose.runtime.Immutable
 import com.synrg.harbor.core.JsonStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -7,6 +8,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 
 /** [imdbId] links the entry to the Stremio library, which keys titles by IMDb id. */
+@Immutable
 @Serializable
 data class WatchlistEntry(val item: MediaItem, val addedAt: Long, val imdbId: String? = null)
 

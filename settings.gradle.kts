@@ -13,5 +13,6 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "Harbor"
+include(":core")
 include(":app")
 include(":baselineprofile")
