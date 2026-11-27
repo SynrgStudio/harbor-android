@@ -2,6 +2,7 @@ package com.synrg.harbor.downloads
 
 import android.app.Application
 import android.content.Intent
+import android.os.Environment
 import androidx.compose.runtime.Immutable
 import androidx.core.content.ContextCompat
 import com.synrg.harbor.R
@@ -111,7 +112,21 @@ class Downloads(
     private val _speed = MutableStateFlow<Map<String, DownloadSpeed>>(emptyMap())
     val speed: StateFlow<Map<String, DownloadSpeed>> = _speed
 
-    val dir: File get() = File(app.filesDir, "downloads").apply { mkdirs() }
+    /** Where new downloads go: the SD card when chosen (and still there), else the phone. */
+    val dir: File
+        get() = (if (settings.current.downloadStorage == "sd") sdDir() else null)
+            ?: File(app.filesDir, "downloads").apply { mkdirs() }
+
+    /**
+     * The app's own folder on a removable card, when one is mounted. No permission needed; Android
+     * deletes it with the app. Torrents finish in the engine's cache on the phone and are copied
+     * there (a rename only works within one storage).
+     */
+    fun sdDir(): File? = app.getExternalFilesDirs(null).drop(1).firstOrNull { folder ->
+        folder != null && runCatching {
+            Environment.isExternalStorageRemovable(folder) && Environment.getExternalStorageState(folder) == Environment.MEDIA_MOUNTED
+        }.getOrDefault(false)
+    }?.let { File(it, "downloads").apply { mkdirs() } }
 
     /** Finished since the service last asked (for its "ready to watch" notification). */
     private val finished = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()

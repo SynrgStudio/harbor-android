@@ -1,7 +1,9 @@
 package com.synrg.harbor.core
 
 import android.app.Application
+import com.synrg.harbor.cast.CastManager
 import com.synrg.harbor.data.ProgressData
+import com.synrg.harbor.downloads.AutoDownloads
 import com.synrg.harbor.downloads.DownloadData
 import com.synrg.harbor.downloads.Downloads
 import com.synrg.harbor.episodes.CalendarData
@@ -9,6 +11,8 @@ import com.synrg.harbor.episodes.EpisodeCalendar
 import com.synrg.harbor.data.ProgressRepository
 import com.synrg.harbor.data.Settings
 import com.synrg.harbor.data.SettingsRepository
+import com.synrg.harbor.data.WatchLog
+import com.synrg.harbor.data.WatchLogRepository
 import com.synrg.harbor.data.WatchlistData
 import com.synrg.harbor.data.WatchlistRepository
 import com.synrg.harbor.stremio.AddonRepository
@@ -18,6 +22,7 @@ import com.synrg.harbor.stremio.WatchedMarks
 import com.synrg.harbor.tmdb.Metadata
 import com.synrg.harbor.tmdb.TmdbAddon
 import com.synrg.harbor.tmdb.TmdbApi
+import com.synrg.harbor.tmdb.Wikidata
 import com.synrg.harbor.torrent.TorrentEngine
 import com.synrg.harbor.update.Updater
 import kotlinx.coroutines.CoroutineScope
@@ -62,8 +67,10 @@ class AppGraph(val app: Application) {
     val settings: SettingsRepository by lazy { SettingsRepository(store("settings.json", Settings.serializer(), Settings())) }
     val progress: ProgressRepository by lazy { ProgressRepository(store("progress.json", ProgressData.serializer(), ProgressData())) }
     val watchlist: WatchlistRepository by lazy { WatchlistRepository(store("watchlist.json", WatchlistData.serializer(), WatchlistData())) }
+    val watchLog: WatchLogRepository by lazy { WatchLogRepository(store("watchlog.json", WatchLog.serializer(), WatchLog())) }
+    val backup: Backup by lazy { Backup(this) }
 
-    val meta: Metadata by lazy { Metadata(settings, TmdbApi(http, json, settings), TmdbAddon(http, json, settings)) }
+    val meta: Metadata by lazy { Metadata(settings, TmdbApi(http, json, settings), TmdbAddon(http, json, settings), Wikidata(http, json)) }
     val addons: AddonRepository by lazy { AddonRepository(http, json, settings) }
     val stremio: StremioAccount by lazy { StremioAccount(http, json, settings, addons) }
     val sync: StremioSync by lazy { StremioSync(stremio, addons, settings, progress, watchlist, meta, scope) }
@@ -77,6 +84,8 @@ class AppGraph(val app: Application) {
     val downloads: Downloads by lazy {
         Downloads(app, store("downloads.json", DownloadData.serializer(), DownloadData()), torrents, mediaHttp, network, settings, progress, addons)
     }
+    val cast: CastManager by lazy { CastManager(app, mediaHttp, scope) }
+    val autoDownloads: AutoDownloads by lazy { AutoDownloads(downloads, addons, meta, settings, torrents, scope) }
 
     /** What a list already knew about a title, so its detail page can paint before the full data arrives. */
     val previews = java.util.concurrent.ConcurrentHashMap<String, com.synrg.harbor.data.MediaItem>()

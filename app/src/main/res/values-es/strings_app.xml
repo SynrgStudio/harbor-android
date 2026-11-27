@@ -133,4 +133,70 @@
     <string name="settings_up_to_date">Ya tenés la última versión</string>
     <string name="settings_check_failed">No se pudo consultar GitHub</string>
     <string name="settings_version_footer">Harbor para Android %1$s</string>
+
+    <string name="settings_subtitle_style">Estilo de subtítulos</string>
+    <string name="settings_subtitle_color">Color</string>
+    <string name="settings_color_white">Blanco</string>
+    <string name="settings_color_yellow">Amarillo</string>
+    <string name="settings_color_cyan">Celeste</string>
+    <string name="settings_subtitle_edge">Borde</string>
+    <string name="settings_edge_outline">Contorno</string>
+    <string name="settings_edge_shadow">Sombra</string>
+    <string name="settings_edge_box">Recuadro</string>
+    <string name="settings_subtitle_font">Letra</string>
+    <string name="settings_font_medium">Normal</string>
+    <string name="settings_font_bold">Negrita</string>
+    <string name="settings_font_serif">Serif</string>
+    <string name="settings_subtitle_position">Altura</string>
+    <string name="settings_position_low">Abajo</string>
+    <string name="settings_position_normal">Normal</string>
+    <string name="settings_position_high">Más arriba</string>
+    <string name="settings_subtitle_sample">Así se van a ver los subtítulos.</string>
+
+    <string name="settings_auto_play">Poner la mejor fuente directamente</string>
+    <string name="settings_auto_play_hint">“Ver ahora” saltea la lista y pone la mejor fuente dentro de estos límites. Las descargas de temporada y las inteligentes también los usan.</string>
+    <string name="settings_auto_quality">Calidad máxima</string>
+    <string name="settings_auto_size">Archivo más grande</string>
+    <string name="settings_size_any">Cualquiera</string>
+    <string name="settings_smart_downloads">Descargas inteligentes</string>
+    <string name="settings_smart_downloads_hint">Cuando terminás un episodio descargado, se borra y se descarga el siguiente.</string>
+    <string name="settings_storage">Guardar descargas en</string>
+    <string name="settings_storage_phone">Celular</string>
+    <string name="settings_storage_sd">Tarjeta SD</string>
+    <string name="settings_storage_hint">Las descargas que ya tenés quedan donde están.</string>
+
+    <string name="widget_description">Lo que estás viendo, a un toque de seguir</string>
+
+    <string name="settings_backup_title">Copia de seguridad</string>
+    <string name="settings_backup_subtitle">Tu progreso, Mi lista, los ajustes y los addons en un archivo, para guardarlo o pasarlo a otro celular. No incluye tu sesión de Stremio ni la clave de TMDB; los links de los addons pueden llevar claves, así que guardalo en privado.</string>
+    <string name="settings_backup_export">Exportar</string>
+    <string name="settings_backup_import">Importar</string>
+    <string name="settings_backup_saved">Copia guardada</string>
+    <string name="settings_backup_write_failed">No se pudo guardar el archivo</string>
+    <string name="settings_backup_failed">Ese archivo no es una copia de Harbor</string>
+    <string name="settings_backup_restored">Restaurado: %1$d con progreso, %2$d sumados a Mi lista</string>
+
+    <string name="stats_title">Tus estadísticas</string>
+    <string name="stats_this_year">%1$d</string>
+    <string name="stats_all_time">Desde siempre</string>
+    <string name="stats_time">vistas en Harbor</string>
+    <string name="stats_busiest_day">El día que más mirás: %1$s.</string>
+    <string name="stats_by_month">Por mes</string>
+    <string name="stats_top">Lo más visto</string>
+    <string name="stats_note">El tiempo se cuenta desde la versión 0.8.0 en este celular. Las películas y episodios terminados también incluyen lo que viste en Stremio.</string>
+    <string name="stats_empty_title">Todavía nada</string>
+    <string name="stats_empty_body">Mirá algo y volvé.</string>
+    <plurals name="stats_movies">
+        <item quantity="one">película</item>
+        <item quantity="other">películas</item>
+    </plurals>
+    <plurals name="stats_episodes">
+        <item quantity="one">episodio</item>
+        <item quantity="other">episodios</item>
+    </plurals>
+    <plurals name="stats_series">
+        <item quantity="one">serie</item>
+        <item quantity="other">series</item>
+    </plurals>
+    <string name="settings_lang_portuguese">Portugués</string>
 </resources>

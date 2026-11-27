@@ -29,6 +29,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,11 +77,14 @@ fun PosterCard(item: MediaItem, onClick: () -> Unit, modifier: Modifier = Modifi
             .background(HarborColors.SurfaceHigh)
             .clickable(interactionSource = source, indication = null, onClick = onClick),
     ) {
-        if (item.posterPath != null) {
+        // The name instead of the poster when there is none, or it fails to load (only then: rows stay cheap).
+        var failed by remember(item.posterPath) { mutableStateOf(false) }
+        if (item.posterPath != null && !failed) {
             AsyncImage(
                 model = Img.poster(item.posterPath),
                 contentDescription = item.title,
                 contentScale = ContentScale.Crop,
+                onError = { failed = true },
                 modifier = Modifier.fillMaxSize(),
             )
         } else {

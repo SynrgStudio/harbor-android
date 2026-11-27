@@ -113,4 +113,44 @@
     <string name="meta_error_not_found">No se encontró la ficha</string>
     <string name="meta_error_incomplete">La ficha llegó incompleta</string>
     <string name="meta_error_tmdb">TMDB respondió %1$d</string>
+
+    <string name="person_known_for">Conocido por</string>
+    <string name="person_filmography">Filmografía</string>
+    <string name="person_born_in">Nació el %1$s en %2$s</string>
+    <string name="person_born">Nació el %1$s</string>
+    <string name="person_lived">%1$s – %2$s</string>
+    <string name="person_dept_acting">Actuación</string>
+    <string name="person_dept_directing">Dirección</string>
+    <string name="person_dept_writing">Guion</string>
+    <string name="person_dept_production">Producción</string>
+    <string name="person_error">No se pudo cargar esta página</string>
+    <string name="person_empty">No se encontraron títulos</string>
+
+    <string name="detail_saga_here">Estás acá</string>
+    <string name="detail_where_to_watch">Dónde verla</string>
+    <string name="providers_stream">Suscripción</string>
+    <string name="providers_free">Gratis</string>
+    <string name="providers_rent">Alquiler</string>
+    <string name="providers_buy">Compra</string>
+    <string name="providers_source">Datos de JustWatch, a través de TMDB</string>
+
+    <string name="detail_download_season">Descargar temporada</string>
+    <string name="detail_download_season_title">¿Descargar la temporada %1$d?</string>
+    <string name="detail_download_season_go">Descargar</string>
+    <string name="detail_season_looking">Buscando fuentes…</string>
+    <string name="detail_season_nothing">Esa temporada ya está descargada</string>
+    <string name="streams_auto_choosing">Eligiendo la mejor fuente…</string>
+    <string name="streams_auto_cancel">Elijo yo</string>
+    <plurals name="detail_download_season_body">
+        <item quantity="one">Su %1$d episodio se descarga con la mejor fuente según tus límites de Ajustes → Reproducción.</item>
+        <item quantity="other">Sus %1$d episodios se descargan uno detrás de otro, cada uno con la mejor fuente según tus límites de Ajustes → Reproducción.</item>
+    </plurals>
+    <plurals name="detail_season_queued">
+        <item quantity="one">Descargando %1$d episodio</item>
+        <item quantity="other">Descargando %1$d episodios</item>
+    </plurals>
+    <plurals name="detail_season_missing">
+        <item quantity="one">sin fuente para %1$d</item>
+        <item quantity="other">sin fuente para %1$d</item>
+    </plurals>
 </resources>

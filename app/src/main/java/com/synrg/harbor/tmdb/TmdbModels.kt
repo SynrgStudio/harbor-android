@@ -58,7 +58,78 @@ data class TmdbDetails(
     @SerialName("external_ids") val externalIds: TmdbExternalIds? = null,
     @SerialName("release_dates") val releaseDates: TmdbReleaseDates? = null,
     @SerialName("content_ratings") val contentRatings: TmdbContentRatings? = null,
+    @SerialName("belongs_to_collection") val collection: TmdbCollectionRef? = null,
+    @SerialName("watch/providers") val watchProviders: TmdbWatchProviders? = null,
 )
+
+@Serializable
+data class TmdbCollectionRef(val id: Int, val name: String? = null)
+
+@Serializable
+data class TmdbCollection(val id: Int, val name: String? = null, val parts: List<TmdbItem> = emptyList())
+
+@Serializable
+data class TmdbWatchProviders(val results: Map<String, TmdbRegionProviders> = emptyMap())
+
+@Serializable
+data class TmdbRegionProviders(
+    val link: String? = null,
+    val flatrate: List<TmdbProvider> = emptyList(),
+    val free: List<TmdbProvider> = emptyList(),
+    val ads: List<TmdbProvider> = emptyList(),
+    val rent: List<TmdbProvider> = emptyList(),
+    val buy: List<TmdbProvider> = emptyList(),
+)
+
+@Serializable
+data class TmdbProvider(
+    @SerialName("provider_id") val id: Int,
+    @SerialName("provider_name") val name: String,
+    @SerialName("logo_path") val logoPath: String? = null,
+    @SerialName("display_priority") val priority: Int = 0,
+)
+
+@Serializable
+data class TmdbPerson(
+    val id: Int,
+    val name: String,
+    val biography: String? = null,
+    val birthday: String? = null,
+    val deathday: String? = null,
+    @SerialName("place_of_birth") val birthplace: String? = null,
+    @SerialName("profile_path") val profilePath: String? = null,
+    @SerialName("known_for_department") val department: String? = null,
+    @SerialName("combined_credits") val credits: TmdbCombinedCredits? = null,
+)
+
+@Serializable
+data class TmdbCombinedCredits(val cast: List<TmdbCredit> = emptyList(), val crew: List<TmdbCredit> = emptyList())
+
+/** A title in a person's credits: a [TmdbItem] plus their part in it. */
+@Serializable
+data class TmdbCredit(
+    val id: Int,
+    @SerialName("media_type") val mediaType: String? = null,
+    val title: String? = null,
+    val name: String? = null,
+    @SerialName("poster_path") val posterPath: String? = null,
+    @SerialName("backdrop_path") val backdropPath: String? = null,
+    val overview: String? = null,
+    @SerialName("release_date") val releaseDate: String? = null,
+    @SerialName("first_air_date") val firstAirDate: String? = null,
+    @SerialName("vote_average") val voteAverage: Double = 0.0,
+    @SerialName("vote_count") val voteCount: Int = 0,
+    @SerialName("genre_ids") val genreIds: List<Int> = emptyList(),
+    val adult: Boolean = false,
+    val character: String? = null,
+    val job: String? = null,
+) {
+    fun asItem() = TmdbItem(
+        id = id, mediaType = mediaType, title = title, name = name, posterPath = posterPath, backdropPath = backdropPath,
+        overview = overview, releaseDate = releaseDate, firstAirDate = firstAirDate, voteAverage = voteAverage,
+        voteCount = voteCount, genreIds = genreIds, adult = adult,
+    )
+}
 
 @Serializable
 data class TmdbSeasonSummary(

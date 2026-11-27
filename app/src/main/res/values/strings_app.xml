@@ -114,7 +114,7 @@
     <string name="settings_lang_spanish">Spanish</string>
     <string name="settings_lang_english">English</string>
     <string name="settings_lang_japanese">Japanese</string>
-    <string name="settings_lang_spanish_latam">Spanish (Latin America)</string>
+    <string name="settings_lang_spanish_latam">Spanish (LatAm)</string>
     <string name="settings_lang_spanish_spain">Spanish (Spain)</string>
 
     <string name="settings_downloads_title">Downloads</string>
@@ -143,4 +143,80 @@
     <string name="settings_up_to_date">You have the latest version</string>
     <string name="settings_check_failed">Couldn\'t reach GitHub</string>
     <string name="settings_version_footer">Harbor for Android %1$s</string>
+
+    <!-- Subtitle style (Settings â†’ Playback) -->
+    <string name="settings_subtitle_style">Subtitle style</string>
+    <string name="settings_subtitle_color">Color</string>
+    <string name="settings_color_white">White</string>
+    <string name="settings_color_yellow">Yellow</string>
+    <string name="settings_color_cyan">Light blue</string>
+    <string name="settings_subtitle_edge">Edge</string>
+    <string name="settings_edge_outline">Outline</string>
+    <string name="settings_edge_shadow">Shadow</string>
+    <string name="settings_edge_box">Box</string>
+    <string name="settings_subtitle_font">Font</string>
+    <string name="settings_font_medium">Normal</string>
+    <string name="settings_font_bold">Bold</string>
+    <string name="settings_font_serif">Serif</string>
+    <string name="settings_subtitle_position">Height</string>
+    <string name="settings_position_low">Low</string>
+    <string name="settings_position_normal">Normal</string>
+    <string name="settings_position_high">High</string>
+    <!-- Sample line in the subtitle preview. -->
+    <string name="settings_subtitle_sample">This is how subtitles will look.</string>
+
+    <!-- Automatic choices (Settings → Playback) and downloads -->
+    <string name="settings_auto_play">Play the best stream right away</string>
+    <string name="settings_auto_play_hint">“Watch now” skips the list and plays the best stream within these limits. Season downloads and smart downloads use them too.</string>
+    <string name="settings_auto_quality">Highest quality</string>
+    <string name="settings_auto_size">Largest file</string>
+    <string name="settings_size_any">Any</string>
+    <string name="settings_smart_downloads">Smart downloads</string>
+    <string name="settings_smart_downloads_hint">When you finish an episode you downloaded, it\'s deleted and the next one downloads.</string>
+    <string name="settings_storage">Save downloads to</string>
+    <string name="settings_storage_phone">Phone</string>
+    <string name="settings_storage_sd">SD card</string>
+    <string name="settings_storage_hint">Downloads you already have stay where they are.</string>
+
+    <!-- Home screen widget -->
+    <string name="widget_description">What you\'re watching, one tap from playing again</string>
+
+    <!-- Backup (Settings) -->
+    <string name="settings_backup_title">Backup</string>
+    <string name="settings_backup_subtitle">Your progress, My list, settings and addons in one file, to keep or take to another phone. Your Stremio sign-in and TMDB key are left out; addon links can carry keys, so keep the file private.</string>
+    <string name="settings_backup_export">Export</string>
+    <string name="settings_backup_import">Import</string>
+    <string name="settings_backup_saved">Backup saved</string>
+    <string name="settings_backup_write_failed">Couldn\'t save the file</string>
+    <string name="settings_backup_failed">That file isn\'t a Harbor backup</string>
+    <!-- Progress entries brought in, then titles added to My list. -->
+    <string name="settings_backup_restored">Restored: %1$d with progress, %2$d added to My list</string>
+
+    <!-- Stats (from My list) -->
+    <string name="stats_title">Your stats</string>
+    <!-- The argument is the year, e.g. "2026". -->
+    <string name="stats_this_year">%1$d</string>
+    <string name="stats_all_time">All time</string>
+    <string name="stats_time">watched in Harbor</string>
+    <!-- The argument is a weekday, e.g. "Friday". -->
+    <string name="stats_busiest_day">You watch the most on %1$s.</string>
+    <string name="stats_by_month">By month</string>
+    <string name="stats_top">Most watched</string>
+    <string name="stats_note">Time counts from version 0.8.0 on this phone. Finished movies and episodes also include what you watched in Stremio.</string>
+    <string name="stats_empty_title">Nothing yet</string>
+    <string name="stats_empty_body">Watch something and come back.</string>
+    <!-- Labels under the numbers in Stats. -->
+    <plurals name="stats_movies">
+        <item quantity="one">movie</item>
+        <item quantity="other">movies</item>
+    </plurals>
+    <plurals name="stats_episodes">
+        <item quantity="one">episode</item>
+        <item quantity="other">episodes</item>
+    </plurals>
+    <plurals name="stats_series">
+        <item quantity="one">series</item>
+        <item quantity="other">series</item>
+    </plurals>
+    <string name="settings_lang_portuguese">Portuguese</string>
 </resources>

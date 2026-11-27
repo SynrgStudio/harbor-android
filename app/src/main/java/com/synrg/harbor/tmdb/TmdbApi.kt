@@ -9,7 +9,11 @@ import com.synrg.harbor.data.Details
 import com.synrg.harbor.data.Episode
 import com.synrg.harbor.data.MediaItem
 import com.synrg.harbor.data.MediaType
+import com.synrg.harbor.data.Person
+import com.synrg.harbor.data.Saga
 import com.synrg.harbor.data.SeasonInfo
+import com.synrg.harbor.data.WatchProvider
+import com.synrg.harbor.data.WatchProviders
 import com.synrg.harbor.data.SettingsRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -56,7 +60,7 @@ class TmdbApi(
         val key = s.tmdbKey
         val bearer = key.startsWith("eyJ")
         val url = "https://api.themoviedb.org/3/$path".toHttpUrl().newBuilder().apply {
-            addQueryParameter("language", s.language)
+            if (params.none { it.first == "language" }) addQueryParameter("language", s.language)
             params.forEach { (k, v) -> if (v != null) addQueryParameter(k, v) }
             if (!bearer) addQueryParameter("api_key", key)
         }.build()
@@ -107,8 +111,8 @@ class TmdbApi(
     suspend fun details(type: MediaType, id: Int): Details {
         val cacheKey = "${type.tmdb}:$id:${settings.current.language}"
         detailsCache[cacheKey]?.let { return it }
-        val append = if (type == MediaType.Movie) "credits,images,recommendations,external_ids,release_dates"
-        else "credits,images,recommendations,external_ids,content_ratings"
+        val append = if (type == MediaType.Movie) "credits,images,recommendations,external_ids,release_dates,watch/providers"
+        else "credits,images,recommendations,external_ids,content_ratings,watch/providers"
         val d = get(
             "${type.tmdb}/$id", TmdbDetails.serializer(),
             "append_to_response" to append,
@@ -141,15 +145,72 @@ class TmdbApi(
             runtime = d.runtime ?: d.episodeRunTime.firstOrNull(),
             seasons = d.seasons.filter { it.seasonNumber > 0 && it.episodeCount > 0 }
                 .map { SeasonInfo(it.seasonNumber, it.name ?: Strings.get(R.string.common_season_n, it.seasonNumber), it.episodeCount) },
-            cast = d.credits?.cast.orEmpty().take(20).map { CastMember(it.id, it.name, it.character, it.profilePath) },
+            cast = d.credits?.cast.orEmpty().take(20).map { CastMember(it.id, it.name, it.character, it.profilePath, personId = it.id) },
             recommendations = d.recommendations?.results.orEmpty().mapNotNull { it.toMediaItem(type) }.filter { it.posterPath != null },
             imdbId = d.imdbId ?: d.externalIds?.imdbId,
             logoPath = d.images?.bestLogo(),
             status = d.status,
             certification = certification,
+            collectionId = d.collection?.id,
+            providers = d.watchProviders?.results?.get(region)?.toProviders(),
         )
         detailsCache[cacheKey] = details
         return details
+    }
+
+    private fun TmdbRegionProviders.toProviders(): WatchProviders {
+        fun List<TmdbProvider>.mapped() = sortedBy { it.priority }.distinctBy { it.id }.map { WatchProvider(it.id, it.name, it.logoPath) }
+        return WatchProviders(
+            link = link,
+            stream = flatrate.mapped(),
+            free = (free + ads).mapped(),
+            rent = rent.mapped(),
+            buy = buy.mapped(),
+        )
+    }
+
+    /** A movie collection ("The Matrix Collection"), parts in release order. */
+    suspend fun collection(id: Int): Saga? {
+        val c = get("collection/$id", TmdbCollection.serializer())
+        val parts = c.parts.sortedWith(compareBy(nullsLast()) { it.releaseDate?.takeIf(String::isNotBlank) })
+            .mapNotNull { it.toMediaItem(MediaType.Movie) }
+        return if (parts.size < 2) null else Saga(c.name ?: return null, parts)
+    }
+
+    suspend fun person(id: Int): Person {
+        val p = get("person/$id", TmdbPerson.serializer(), "append_to_response" to "combined_credits")
+        // Many biographies exist only in English.
+        val bio = p.biography?.takeIf(String::isNotBlank)
+            ?: if (!settings.current.language.startsWith("en")) {
+                runCatching { get("person/$id", TmdbPerson.serializer(), "language" to "en-US").biography }.getOrNull()
+            } else null
+        val directing = p.department == "Directing"
+        val credits = p.credits?.cast.orEmpty().filter { c -> c.character?.let(::isSelf) != true } +
+            p.credits?.crew.orEmpty().filter { directing && it.job == "Director" }
+        val titles = credits
+            .filter { c -> c.posterPath != null && c.genreIds.none { it in NOT_ROLES } }
+            .distinctBy { "${it.mediaType}:${it.id}" }
+        val known = titles.sortedByDescending { it.voteCount }.take(12).mapNotNull { it.asItem().toMediaItem(null) }
+        val all = titles.sortedWith(compareByDescending(nullsFirst()) { (it.releaseDate ?: it.firstAirDate)?.takeIf(String::isNotBlank) })
+            .mapNotNull { it.asItem().toMediaItem(null) }
+        return Person(
+            name = p.name,
+            profilePath = p.profilePath,
+            biography = bio?.takeIf(String::isNotBlank),
+            department = p.department,
+            birthday = p.birthday?.takeIf(String::isNotBlank),
+            deathday = p.deathday?.takeIf(String::isNotBlank),
+            birthplace = p.birthplace?.takeIf(String::isNotBlank),
+            knownFor = known,
+            credits = all,
+        )
+    }
+
+    private companion object {
+        /** Talk shows, news, reality and documentaries: appearances, not roles. */
+        val NOT_ROLES = setOf(10767, 10763, 10764, 99)
+        private val SELF = Regex("""^(self|himself|herself|themselves).*""", RegexOption.IGNORE_CASE)
+        fun isSelf(character: String) = SELF.matches(character.trim())
     }
 
     suspend fun season(tvId: Int, number: Int): List<Episode> {

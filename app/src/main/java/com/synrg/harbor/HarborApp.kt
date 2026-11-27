@@ -12,6 +12,7 @@ import coil3.request.crossfade
 import com.synrg.harbor.core.AppGraph
 import com.synrg.harbor.core.Shortcuts
 import com.synrg.harbor.core.Strings
+import com.synrg.harbor.widget.ContinueWidget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collectLatest
@@ -41,6 +42,14 @@ class HarborApp : Application(), SingletonImageLoader.Factory {
                 .distinctUntilChanged { a, b -> a.map { it.key } == b.map { it.key } }
                 .debounce(2_000)
                 .collectLatest { runCatching { Shortcuts.update(this@HarborApp, it) } }
+        }
+        // The home screen widget follows it too, time left included (rounded to minutes).
+        graph.scope.launch {
+            graph.progress.inProgress
+                .map { list -> list.take(3).map { it.key to it.remainingMin } }
+                .distinctUntilChanged()
+                .debounce(3_000)
+                .collectLatest { runCatching { ContinueWidget.refresh(this@HarborApp) } }
         }
     }
 

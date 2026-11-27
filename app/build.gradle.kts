@@ -25,8 +25,8 @@ android {
         minSdk = 29
         targetSdk = 36
         // -Pharbor.versionCode/-Pharbor.versionName build an "older" copy to test the in-app updater.
-        versionCode = providers.gradleProperty("harbor.versionCode").orNull?.toInt() ?: 11
-        versionName = providers.gradleProperty("harbor.versionName").orNull ?: "0.7.0"
+        versionCode = providers.gradleProperty("harbor.versionCode").orNull?.toInt() ?: 12
+        versionName = providers.gradleProperty("harbor.versionName").orNull ?: "0.8.0"
         // In-app updates from GitHub Releases; a store build (F-Droid) would turn this off.
         buildConfigField("boolean", "SELF_UPDATE", "true")
     }
@@ -69,9 +69,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    // English by default, Spanish for phones in Spanish; drops other languages bundled by libraries.
+    // English by default, Spanish and Portuguese for phones in those; drops other languages bundled by libraries.
     androidResources {
-        localeFilters += setOf("en", "es")
+        localeFilters += setOf("en", "es", "pt")
     }
 
     buildFeatures {
@@ -128,6 +128,8 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.haze)
+    // Chromecast. Started only when the user opens "Play on a TV" (cast/GoogleCast.kt).
+    implementation(libs.play.services.cast.framework)
 
     testImplementation(libs.junit)
 }

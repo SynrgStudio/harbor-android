@@ -70,7 +70,15 @@ data class TrackPref(
     val subtitleChoice: SubtitleChoice? = null,
     /** Subtitle sync set by hand; it belongs to one video (another file needs its own). */
     val subtitleDelay: SubtitleShift? = null,
+    /** Language (ISO 639-1) of the second subtitle shown at the top; null when off. */
+    val secondSubtitle: String? = null,
+    /** The series' intro as learned from the user skipping it by hand (see player/IntroSkip.kt). */
+    val intro: IntroSkip? = null,
 )
+
+/** An intro that starts around [startMs] and lasts [lengthMs]; the "Skip intro" button jumps [lengthMs]. */
+@Serializable
+data class IntroSkip(val startMs: Long, val lengthMs: Long)
 
 @Serializable
 data class SubtitleShift(val video: String, val ms: Long)
@@ -142,6 +150,30 @@ class ProgressRepository(private val store: JsonStore<ProgressData>) {
     fun removeKey(key: String) = store.update { it.copy(entries = it.entries - key) }
 
     fun flush() = store.flushNow()
+
+    /** Everything, for a backup. */
+    val data: ProgressData get() = store.value
+
+    /**
+     * From a backup: entries the phone lacks, or has older, come in; per-title choices fill in the
+     * titles that have none here. Returns how many entries changed.
+     */
+    fun merge(other: ProgressData): Int {
+        var changed = 0
+        store.update { data ->
+            val entries = data.entries.toMutableMap()
+            other.entries.forEach { (key, e) ->
+                val mine = entries[key]
+                if (mine == null || e.updatedAt > mine.updatedAt) {
+                    entries[key] = e
+                    changed++
+                }
+            }
+            data.copy(entries = entries, tracks = other.tracks + data.tracks)
+        }
+        store.flushNow()
+        return changed
+    }
 
     fun trackPref(type: MediaType, id: Int): TrackPref? = store.value.tracks["${type.tmdb}:$id"]
 

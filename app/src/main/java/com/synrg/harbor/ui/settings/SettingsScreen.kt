@@ -60,6 +60,11 @@ import com.synrg.harbor.core.Strings
 import com.synrg.harbor.episodes.EpisodeAlerts
 import com.synrg.harbor.episodes.EpisodeCheckJob
 import com.synrg.harbor.data.AddonEntry
+import com.synrg.harbor.data.Settings
+import com.synrg.harbor.player.StyledSubtitle
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
 import com.synrg.harbor.graph
 import com.synrg.harbor.ui.components.GlassButton
 import com.synrg.harbor.ui.components.PrimaryButton
@@ -67,7 +72,9 @@ import com.synrg.harbor.ui.theme.HIcons
 import com.synrg.harbor.ui.theme.HarborColors
 import com.synrg.harbor.update.UpdateCard
 import com.synrg.harbor.update.UpdateState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SettingsScreen(bottomPadding: Dp) {
@@ -182,16 +189,20 @@ fun SettingsScreen(bottomPadding: Dp) {
         Section(stringResource(R.string.settings_playback_title), null) {
             val spanish = stringResource(R.string.settings_lang_spanish)
             val english = stringResource(R.string.settings_lang_english)
+            val portuguese = stringResource(R.string.settings_lang_portuguese)
             Label(stringResource(R.string.settings_preferred_audio))
             Choice(
-                listOf("" to stringResource(R.string.settings_lang_original), "es" to spanish, "en" to english, "ja" to stringResource(R.string.settings_lang_japanese)),
+                listOf(
+                    "" to stringResource(R.string.settings_lang_original), "es" to spanish, "en" to english,
+                    "pt" to portuguese, "ja" to stringResource(R.string.settings_lang_japanese),
+                ),
                 settings.audioLanguage,
             ) { v ->
                 graph.settings.update { it.copy(audioLanguage = v) }
             }
             Spacer(Modifier.height(14.dp))
             Label(stringResource(R.string.settings_subtitles))
-            Choice(listOf("" to stringResource(R.string.settings_lang_off), "es" to spanish, "en" to english), settings.subtitleLanguage) { v ->
+            Choice(listOf("" to stringResource(R.string.settings_lang_off), "es" to spanish, "en" to english, "pt" to portuguese), settings.subtitleLanguage) { v ->
                 graph.settings.update { it.copy(subtitleLanguage = v) }
             }
             Spacer(Modifier.height(14.dp))
@@ -208,13 +219,42 @@ fun SettingsScreen(bottomPadding: Dp) {
                 graph.settings.update { it.copy(subtitleScale = v.toFloat()) }
             }
             Spacer(Modifier.height(14.dp))
+            SubtitleStyleOptions(settings) { transform -> graph.settings.update(transform) }
+            Spacer(Modifier.height(14.dp))
             ToggleRow(stringResource(R.string.settings_autoplay_next), settings.autoplayNext) { on -> graph.settings.update { it.copy(autoplayNext = on) } }
             ToggleRow(stringResource(R.string.settings_ask_mobile_data), settings.askOnMobileData) { on -> graph.settings.update { it.copy(askOnMobileData = on) } }
+            Spacer(Modifier.height(10.dp))
+            ToggleRow(stringResource(R.string.settings_auto_play), settings.autoPlayBest) { on -> graph.settings.update { it.copy(autoPlayBest = on) } }
+            Text(stringResource(R.string.settings_auto_play_hint), style = MaterialTheme.typography.bodySmall, color = HarborColors.TextFaint)
+            Spacer(Modifier.height(12.dp))
+            Label(stringResource(R.string.settings_auto_quality))
+            Choice(listOf("4K" to "4K", "1080p" to "1080p", "720p" to "720p"), settings.autoMaxQuality) { v ->
+                graph.settings.update { it.copy(autoMaxQuality = v) }
+            }
+            Spacer(Modifier.height(12.dp))
+            Label(stringResource(R.string.settings_auto_size))
+            Choice(
+                listOf("0" to stringResource(R.string.settings_size_any), "2" to "2 GB", "5" to "5 GB", "10" to "10 GB"),
+                settings.autoMaxSizeGb.toString(),
+            ) { v -> graph.settings.update { it.copy(autoMaxSizeGb = v.toInt()) } }
         }
 
         // Downloads
         Section(stringResource(R.string.settings_downloads_title), stringResource(R.string.settings_downloads_subtitle)) {
             ToggleRow(stringResource(R.string.settings_download_wifi_only), settings.downloadWifiOnly) { on -> graph.settings.update { it.copy(downloadWifiOnly = on) } }
+            ToggleRow(stringResource(R.string.settings_smart_downloads), settings.smartDownloads) { on -> graph.settings.update { it.copy(smartDownloads = on) } }
+            Text(stringResource(R.string.settings_smart_downloads_hint), style = MaterialTheme.typography.bodySmall, color = HarborColors.TextFaint)
+            // Only with a card in the phone; checked each time the screen opens.
+            val hasCard = remember { graph.downloads.sdDir() != null }
+            if (hasCard || settings.downloadStorage == "sd") {
+                Spacer(Modifier.height(14.dp))
+                Label(stringResource(R.string.settings_storage))
+                Choice(
+                    listOf("internal" to stringResource(R.string.settings_storage_phone), "sd" to stringResource(R.string.settings_storage_sd)),
+                    settings.downloadStorage,
+                ) { v -> graph.settings.update { it.copy(downloadStorage = v) } }
+                Text(stringResource(R.string.settings_storage_hint), style = MaterialTheme.typography.bodySmall, color = HarborColors.TextFaint, modifier = Modifier.padding(top = 6.dp))
+            }
         }
 
         // New-episode alerts
@@ -255,6 +295,7 @@ fun SettingsScreen(bottomPadding: Dp) {
                 listOf(
                     "es-MX" to stringResource(R.string.settings_lang_spanish_latam),
                     "es-ES" to stringResource(R.string.settings_lang_spanish_spain),
+                    "pt-BR" to stringResource(R.string.settings_lang_portuguese),
                     "en-US" to stringResource(R.string.settings_lang_english),
                 ),
                 settings.language,
@@ -269,6 +310,39 @@ fun SettingsScreen(bottomPadding: Dp) {
                 graph.settings.update { it.copy(tmdbKey = key.trim()) }
                 toast(if (key.isBlank()) keyCleared else keySaved)
             }, modifier = Modifier.fillMaxWidth())
+        }
+
+        // Backup
+        Section(stringResource(R.string.settings_backup_title), stringResource(R.string.settings_backup_subtitle)) {
+            val saved = stringResource(R.string.settings_backup_saved)
+            val writeFailed = stringResource(R.string.settings_backup_write_failed)
+            val notBackup = stringResource(R.string.settings_backup_failed)
+            val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+                uri ?: return@rememberLauncherForActivityResult
+                scope.launch {
+                    val ok = withContext(Dispatchers.IO) {
+                        runCatching { context.contentResolver.openOutputStream(uri)?.use { graph.backup.export(it) } != null }.getOrDefault(false)
+                    }
+                    toast(if (ok) saved else writeFailed)
+                }
+            }
+            val import = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+                uri ?: return@rememberLauncherForActivityResult
+                scope.launch {
+                    val result = withContext(Dispatchers.IO) {
+                        runCatching { context.contentResolver.openInputStream(uri)?.use { graph.backup.import(it) } }.getOrNull()
+                    }
+                    toast(if (result != null) Strings.get(R.string.settings_backup_restored, result.progress, result.list) else notBackup)
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GlassButton(stringResource(R.string.settings_backup_export), HIcons.Download, onClick = {
+                    export.launch("harbor-backup-${java.time.LocalDate.now()}.json")
+                }, modifier = Modifier.weight(1f))
+                GlassButton(stringResource(R.string.settings_backup_import), HIcons.Refresh, onClick = {
+                    import.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
+                }, modifier = Modifier.weight(1f))
+            }
         }
 
         if (BuildConfig.SELF_UPDATE) {
@@ -309,6 +383,67 @@ private fun syncSummary(addons: Int, continueWatching: Int, added: Int): String 
     if (continueWatching > 0) add(Strings.get(R.string.settings_sync_continue_watching, continueWatching))
     if (added > 0) add(Strings.plural(R.plurals.settings_sync_added, added, added))
 }.joinToString(" · ")
+
+/** Color, edge, font and height of the subtitles, over a preview of how they will look. */
+@Composable
+private fun SubtitleStyleOptions(settings: Settings, update: ((Settings) -> Settings) -> Unit) {
+    Label(stringResource(R.string.settings_subtitle_style))
+    Box(
+        Modifier.fillMaxWidth().height(112.dp).clip(RoundedCornerShape(12.dp))
+            .background(Brush.verticalGradient(listOf(Color(0xFF3A4A5E), Color(0xFF1B2430), Color(0xFF0B0F14)))),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        val bottom = when (settings.subtitlePosition) {
+            "low" -> 6.dp
+            "high" -> 30.dp
+            else -> 14.dp
+        }
+        StyledSubtitle(
+            stringResource(R.string.settings_subtitle_sample), settings, (16 * settings.subtitleScale).sp,
+            Modifier.padding(bottom = bottom, start = 12.dp, end = 12.dp),
+        )
+    }
+    Spacer(Modifier.height(10.dp))
+    Label(stringResource(R.string.settings_subtitle_color))
+    Choice(
+        listOf(
+            "white" to stringResource(R.string.settings_color_white),
+            "yellow" to stringResource(R.string.settings_color_yellow),
+            "cyan" to stringResource(R.string.settings_color_cyan),
+        ),
+        settings.subtitleColor,
+    ) { v -> update { it.copy(subtitleColor = v) } }
+    Spacer(Modifier.height(10.dp))
+    Label(stringResource(R.string.settings_subtitle_edge))
+    Choice(
+        listOf(
+            "outline" to stringResource(R.string.settings_edge_outline),
+            "shadow" to stringResource(R.string.settings_edge_shadow),
+            "box" to stringResource(R.string.settings_edge_box),
+        ),
+        settings.subtitleEdge,
+    ) { v -> update { it.copy(subtitleEdge = v) } }
+    Spacer(Modifier.height(10.dp))
+    Label(stringResource(R.string.settings_subtitle_font))
+    Choice(
+        listOf(
+            "medium" to stringResource(R.string.settings_font_medium),
+            "bold" to stringResource(R.string.settings_font_bold),
+            "serif" to stringResource(R.string.settings_font_serif),
+        ),
+        settings.subtitleFont,
+    ) { v -> update { it.copy(subtitleFont = v) } }
+    Spacer(Modifier.height(10.dp))
+    Label(stringResource(R.string.settings_subtitle_position))
+    Choice(
+        listOf(
+            "low" to stringResource(R.string.settings_position_low),
+            "normal" to stringResource(R.string.settings_position_normal),
+            "high" to stringResource(R.string.settings_position_high),
+        ),
+        settings.subtitlePosition,
+    ) { v -> update { it.copy(subtitlePosition = v) } }
+}
 
 @Composable
 private fun Section(title: String, subtitle: String?, content: @Composable ColumnScope.() -> Unit) {
@@ -365,7 +500,15 @@ private fun Choice(options: List<Pair<String, String>>, selected: String, onSele
                     .padding(vertical = 9.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(label, style = MaterialTheme.typography.labelMedium, color = if (active) HarborColors.Accent else HarborColors.TextDim, maxLines = 1)
+                // Two lines when it must ("Spanish (Latin America)" next to three other choices).
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (active) HarborColors.Accent else HarborColors.TextDim,
+                    maxLines = 2,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 2.dp),
+                )
             }
         }
     }

@@ -75,6 +75,7 @@ fun StreamsSheet(
     onPlayDownloaded: (DownloadItem) -> Unit,
     onDownload: (SavedStream) -> Unit,
     onDismiss: () -> Unit,
+    onCancelAuto: () -> Unit,
     onPick: (SavedStream) -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
@@ -125,6 +126,9 @@ fun StreamsSheet(
                     item(key = "resume") {
                         ResumeCard(saved, ui.resume?.positionMs ?: 0L, torrentsReady, onClick = { onPick(saved) })
                     }
+                }
+                if (ui.auto) {
+                    item(key = "auto") { AutoCard(onCancelAuto) }
                 }
                 ui.error?.let { msg ->
                     item(key = "error") {
@@ -188,6 +192,28 @@ private fun ResumeCard(saved: SavedStream, positionMs: Long, torrentsReady: Bool
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+/** "Choosing the best stream…", with a way to pick by hand instead. */
+@Composable
+private fun AutoCard(onCancel: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+            .background(Brush.horizontalGradient(listOf(Color(0xFF0C3A52), Color(0xFF102536))))
+            .border(1.dp, HarborColors.Accent.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
+            .padding(start = 14.dp, top = 8.dp, bottom = 8.dp, end = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CircularProgressIndicator(Modifier.size(20.dp), color = HarborColors.Accent, strokeWidth = 2.dp)
+        Spacer(Modifier.width(12.dp))
+        Text(stringResource(R.string.streams_auto_choosing), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+        Text(
+            stringResource(R.string.streams_auto_cancel),
+            style = MaterialTheme.typography.labelLarge,
+            color = HarborColors.Accent,
+            modifier = Modifier.clip(RoundedCornerShape(10.dp)).clickable(onClick = onCancel).padding(horizontal = 10.dp, vertical = 8.dp),
+        )
     }
 }
 

@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="player_brightness">Brilho</string>
+    <string name="player_volume">Volume</string>
+    <string name="player_locked_hint">Tela bloqueada · toque aqui para desbloquear</string>
+    <string name="player_next_episode">Próximo episódio</string>
+    <string name="player_watch_now">Assistir agora</string>
+    <string name="player_watch_now_countdown">Assistir agora · %1$d</string>
+    <plurals name="player_peers_speed">
+        <item quantity="one">%1$d peer · %2$s</item>
+        <item quantity="many">%1$d peers · %2$s</item>
+        <item quantity="other">%1$d peers · %2$s</item>
+    </plurals>
+    <string name="player_finding_peers">Procurando peers…</string>
+    <string name="player_exit">Sair</string>
+    <string name="player_lock_screen">Bloquear tela</string>
+    <string name="player_audio_subtitles">Áudio e legendas</string>
+    <string name="player_resize">Ajustar imagem</string>
+    <string name="player_pip">Picture-in-picture</string>
+    <string name="player_pause">Pausar</string>
+    <string name="player_play">Reproduzir</string>
+    <string name="player_skip_forward">Avançar 10 segundos</string>
+    <string name="player_skip_back">Voltar 10 segundos</string>
+    <string name="player_next">Próximo</string>
+    <string name="player_data_warning_cellular">Você não está no Wi-Fi</string>
+    <string name="player_data_warning_metered">Esta rede tem dados limitados</string>
+    <string name="player_data_warning_body">Assistir pode gastar vários GB do seu plano de dados. Reproduzir mesmo assim?</string>
+    <string name="player_play_anyway">Reproduzir mesmo assim</string>
+    <string name="player_error_title">Não foi possível reproduzir</string>
+    <string name="player_other_stream">Outra fonte</string>
+    <string name="player_episode_label">T%1$d · E%2$d</string>
+    <string name="player_episode_label_titled">T%1$d · E%2$d — %3$s</string>
+    <string name="player_connecting_torrent">Conectando ao torrent…</string>
+    <string name="player_loading">Carregando…</string>
+    <string name="player_finding_next">Procurando o próximo episódio…</string>
+    <string name="player_error_connection_lost">A conexão com a fonte caiu.</string>
+    <string name="player_error_stream_gone">Esta fonte não está mais disponível (o link expirou ou está fora do ar).</string>
+    <string name="player_error_cant_decode">Este celular não consegue decodificar este vídeo. Tente outra fonte.</string>
+    <string name="player_error_unsupported_format">Formato de arquivo não suportado.</string>
+    <string name="player_error_cant_open">Não foi possível abrir a fonte</string>
+    <string name="player_error_no_link">Esta fonte não tem um link reproduzível</string>
+    <string name="player_error_no_more_episodes">Não há mais episódios disponíveis.</string>
+
+    <string name="sleep_timer">Timer de sono</string>
+    <string name="sleep_pausing_in_seconds">Pausa em %1$d s</string>
+    <string name="sleep_pausing_in_minutes">Pausa em %1$d min</string>
+    <string name="sleep_pausing_at_end">Pausa no final</string>
+    <string name="sleep_hint">Abaixa o volume aos poucos e pausa; depois a tela se apaga sozinha.</string>
+    <string name="sleep_off">Desativado</string>
+    <plurals name="sleep_minutes">
+        <item quantity="one">%1$d minuto</item>
+        <item quantity="many">%1$d minutos</item>
+        <item quantity="other">%1$d minutos</item>
+    </plurals>
+    <string name="sleep_one_hour">1 hora</string>
+    <string name="sleep_hour_and_minutes">1 h %1$d min</string>
+    <string name="sleep_end_of_episode">Quando este episódio acabar</string>
+    <string name="sleep_end_of_movie">Quando o filme acabar</string>
+
+    <string name="tracks_audio">Áudio</string>
+    <string name="tracks_subtitles">Legendas</string>
+    <string name="tracks_speed">Velocidade</string>
+    <string name="tracks_audio_not_loaded">As faixas de áudio ainda não carregaram.</string>
+    <string name="tracks_speed_normal">Normal</string>
+    <string name="tracks_mono">Mono</string>
+    <string name="tracks_stereo">Estéreo</string>
+    <string name="tracks_forced">Forçada</string>
+    <string name="tracks_generic">Faixa</string>
+
+    <string name="subs_off">Desativadas</string>
+    <string name="subs_online">Online</string>
+    <string name="subs_none_online">Sem legendas de addons para isto.</string>
+    <string name="subs_saved">salva</string>
+    <string name="subs_sync">Sincronia</string>
+    <string name="subs_no_offset">Sem ajuste</string>
+    <string name="subs_reset">Redefinir</string>
+    <string name="subs_sync_hint">Se aparecem antes da fala, aumente; se aparecem atrasadas, diminua.</string>
+    <string name="subs_language_unknown">Desconhecido</string>
+    <string name="subs_language_brazil">%1$s (Brasil)</string>
+
+    <string name="player_skip_intro">Pular abertura · %1$s</string>
+
+    <string name="subs_second">Segunda legenda</string>
+    <string name="subs_second_hint">Aparece em cima, em outro idioma: para aprender um idioma ou assistir com alguém que lê outro.</string>
+    <string name="subs_second_failed">Não foi possível carregar essa legenda: tente outra</string>
+
+    <string name="sound_title">Som</string>
+    <string name="sound_night">Modo noturno</string>
+    <string name="sound_night_hint">Equilibra cenas altas e baixas</string>
+    <string name="sound_dialogue">Diálogos mais claros</string>
+    <string name="sound_dialogue_hint">Destaca as vozes sobre a música e os efeitos</string>
+    <string name="sound_boost">Volume extra</string>
+    <string name="sound_boost_hint">Acima do máximo do celular, para vídeos baixos</string>
+    <string name="sound_boost_off">Desativado</string>
+
+    <string name="cast_title">Assistir na TV</string>
+    <string name="cast_searching">Procurando TVs e Chromecasts neste Wi-Fi…</string>
+    <string name="cast_none">Nada encontrado. A TV ou o Chromecast precisa estar ligado e no mesmo Wi-Fi que o celular.</string>
+    <string name="cast_kind_chromecast">Chromecast</string>
+    <string name="cast_kind_tv">Smart TV (DLNA)</string>
+    <string name="cast_playing_on">Reproduzindo em %1$s</string>
+    <string name="cast_connecting">Conectando…</string>
+    <string name="cast_failed">A TV não reproduziu. Algumas TVs não aceitam todos os formatos (MKV, HEVC, DTS…): tente outra fonte.</string>
+    <string name="cast_back_to_phone">Assistir no celular</string>
+    <string name="cast_stop">Parar</string>
+    <string name="cast_channel">Reproduzindo na TV</string>
+</resources>

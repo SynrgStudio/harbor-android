@@ -22,6 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -33,6 +35,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.synrg.harbor.graph
+import com.synrg.harbor.stremio.StremioSubtitle
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.pluralStringResource
@@ -107,6 +114,17 @@ fun TracksPanel(player: Player, status: PlayerStatus, controller: PlayerActivity
     }
     var speed by remember { mutableStateOf(player.playbackParameters.speed) }
     val savedTag = stringResource(R.string.subs_saved)
+    val settings by LocalContext.current.graph.settings.state.collectAsStateWithLifecycle()
+    var pickingSecond by remember { mutableStateOf(false) }
+    val labelled = remember(status.externalSubs, savedTag) { labelSubtitles(status.externalSubs.orEmpty(), savedTag) }
+
+    if (pickingSecond) {
+        SecondSubtitlePicker(status, labelled, onPick = {
+            controller.selectSecondSubtitle(it)
+            pickingSecond = false
+        }, onBack = { pickingSecond = false })
+        return
+    }
 
     fun select(choice: TrackChoice, type: Int, position: Int = 0) {
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
@@ -153,9 +171,55 @@ fun TracksPanel(player: Player, status: PlayerStatus, controller: PlayerActivity
                     val audio = choices(tracks, C.TRACK_TYPE_AUDIO)
                     if (audio.isEmpty()) item { Hint(stringResource(R.string.tracks_audio_not_loaded)) }
                     items(audio) { c -> Option(c.label, c.selected) { select(c, C.TRACK_TYPE_AUDIO) } }
+                    item { SectionLabel(stringResource(R.string.sound_title)) }
+                    item {
+                        Toggle(stringResource(R.string.sound_night), stringResource(R.string.sound_night_hint), settings.nightMode) {
+                            controller.updateSound { it.copy(nightMode = !it.nightMode) }
+                        }
+                    }
+                    item {
+                        Toggle(stringResource(R.string.sound_dialogue), stringResource(R.string.sound_dialogue_hint), settings.dialogueBoost) {
+                            controller.updateSound { it.copy(dialogueBoost = !it.dialogueBoost) }
+                        }
+                    }
+                    item {
+                        Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                            Text(stringResource(R.string.sound_boost), style = MaterialTheme.typography.bodyMedium, color = HarborColors.Text)
+                            Text(stringResource(R.string.sound_boost_hint), style = MaterialTheme.typography.bodySmall, color = HarborColors.TextFaint)
+                            Spacer(Modifier.size(8.dp))
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(HarborColors.SurfaceHigh).padding(3.dp),
+                                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                            ) {
+                                listOf(100, 150, 200).forEach { level ->
+                                    val active = settings.volumeBoost == level
+                                    Box(
+                                        Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
+                                            .background(if (active) HarborColors.SurfaceHighest else Color.Transparent)
+                                            .clickable { controller.updateSound { it.copy(volumeBoost = level) } }
+                                            .padding(vertical = 8.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            if (level == 100) stringResource(R.string.sound_boost_off) else "$level%",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = if (active) HarborColors.Accent else HarborColors.TextDim,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 Tab.Subtitles -> {
                     if (!textDisabled) item { SubtitleSync(status.subtitleDelayMs, controller::setSubtitleDelay) }
+                    item {
+                        val current = status.second?.let { sub -> labelled.firstOrNull { it.first.url == sub.url }?.second ?: Languages.label(sub.lang) }
+                        SecondEntry(current) {
+                            controller.loadExternalSubtitles()
+                            pickingSecond = true
+                        }
+                    }
                     item {
                         Option(stringResource(R.string.subs_off), textDisabled) {
                             player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
@@ -174,14 +238,6 @@ fun TracksPanel(player: Player, status: PlayerStatus, controller: PlayerActivity
                         status.loadingSubs -> item { CircularProgressIndicator(Modifier.padding(8.dp).size(18.dp), strokeWidth = 2.dp) }
                         external.isNullOrEmpty() -> item { Hint(stringResource(R.string.subs_none_online)) }
                         else -> {
-                            // Same-language entries get a number so they can be told apart.
-                            val seen = HashMap<String, Int>()
-                            val labelled = external.take(60).map { sub ->
-                                val name = Languages.label(sub.lang)
-                                val n = (seen[name] ?: 0) + 1
-                                seen[name] = n
-                                sub to "$name $n" + if (sub.url.startsWith("file://")) " · $savedTag" else ""
-                            }
                             items(labelled, key = { it.first.url }) { (sub, label) ->
                                 Option(label, sub.url == activeExternalUrl && !textDisabled) {
                                     controller.selectExternalSubtitle(sub)
@@ -201,6 +257,83 @@ fun TracksPanel(player: Player, status: PlayerStatus, controller: PlayerActivity
                 }
             }
         }
+    }
+}
+
+/** Same-language entries get a number so they can be told apart ("English 1", "English 2"). */
+private fun labelSubtitles(subs: List<StremioSubtitle>, savedTag: String): List<Pair<StremioSubtitle, String>> {
+    val seen = HashMap<String, Int>()
+    return subs.take(60).map { sub ->
+        val name = Languages.label(sub.lang)
+        val n = (seen[name] ?: 0) + 1
+        seen[name] = n
+        sub to "$name $n" + if (sub.url.startsWith("file://")) " · $savedTag" else ""
+    }
+}
+
+@Composable
+private fun SecondEntry(current: String?, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(bottom = 6.dp).clip(RoundedCornerShape(12.dp)).background(HarborColors.SurfaceHigh)
+            .clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(stringResource(R.string.subs_second), style = MaterialTheme.typography.labelLarge, color = HarborColors.Text, modifier = Modifier.weight(1f))
+        Text(
+            current ?: stringResource(R.string.subs_off),
+            style = MaterialTheme.typography.labelLarge,
+            color = if (current != null) HarborColors.Accent else HarborColors.TextDim,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Icon(HIcons.ExpandMore, null, tint = HarborColors.TextDim, modifier = Modifier.padding(start = 4.dp).size(18.dp).rotate(-90f))
+    }
+}
+
+/** The second subtitle: shown at the top, for learning a language or watching with someone who reads another. */
+@Composable
+private fun SecondSubtitlePicker(
+    status: PlayerStatus,
+    labelled: List<Pair<StremioSubtitle, String>>,
+    onPick: (StremioSubtitle?) -> Unit,
+    onBack: () -> Unit,
+) {
+    PanelFrame {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                HIcons.Back, stringResource(R.string.detail_back), tint = HarborColors.TextDim,
+                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(20.dp)).clickable(onClick = onBack).padding(9.dp),
+            )
+            Text(stringResource(R.string.subs_second), style = MaterialTheme.typography.titleMedium, color = HarborColors.Text, modifier = Modifier.padding(start = 4.dp))
+        }
+        Hint(stringResource(R.string.subs_second_hint))
+        LazyColumn(contentPadding = PaddingValues(bottom = 24.dp), modifier = Modifier.fillMaxWidth()) {
+            item { Option(stringResource(R.string.subs_off), status.second == null) { onPick(null) } }
+            when {
+                status.loadingSubs -> item { CircularProgressIndicator(Modifier.padding(8.dp).size(18.dp), strokeWidth = 2.dp) }
+                labelled.isEmpty() -> item { Hint(stringResource(R.string.subs_none_online)) }
+                else -> items(labelled, key = { it.first.url }) { (sub, label) ->
+                    Option(label, status.second?.url == sub.url) { onPick(sub) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun Toggle(label: String, hint: String, on: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, color = HarborColors.Text)
+            Text(hint, style = MaterialTheme.typography.bodySmall, color = HarborColors.TextFaint)
+        }
+        Switch(
+            on, { onClick() },
+            colors = SwitchDefaults.colors(checkedTrackColor = HarborColors.Accent, checkedThumbColor = HarborColors.OnAccent),
+        )
     }
 }
 
@@ -263,6 +396,52 @@ private fun SubtitleSync(delayMs: Long, onChange: (Long) -> Unit) {
             style = MaterialTheme.typography.bodySmall,
             color = HarborColors.TextFaint,
         )
+    }
+}
+
+/** "Play on a TV": Chromecasts and DLNA TVs found on the Wi-Fi, searched while this is open. */
+@Composable
+fun CastPanel(controller: PlayerActivity, onPicked: () -> Unit, onClose: () -> Unit) {
+    val devices by controller.castDevices.collectAsStateWithLifecycle()
+    val searching by controller.castSearching.collectAsStateWithLifecycle()
+    DisposableEffect(Unit) {
+        controller.openCastPicker()
+        onDispose { controller.closeCastPicker() }
+    }
+    PanelFrame {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.cast_title), style = MaterialTheme.typography.titleMedium, color = HarborColors.Text, modifier = Modifier.weight(1f).padding(start = 4.dp))
+            if (searching) CircularProgressIndicator(Modifier.padding(end = 8.dp).size(16.dp), strokeWidth = 2.dp)
+            Icon(
+                HIcons.Close, stringResource(R.string.common_close), tint = HarborColors.TextDim,
+                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(20.dp)).clickable(onClick = onClose).padding(9.dp),
+            )
+        }
+        Hint(stringResource(if (devices.isEmpty() && !searching) R.string.cast_none else R.string.cast_searching))
+        LazyColumn(contentPadding = PaddingValues(bottom = 24.dp), modifier = Modifier.fillMaxWidth()) {
+            items(devices, key = { it.id }) { device ->
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                        .clickable {
+                            controller.castTo(device)
+                            onPicked()
+                        }
+                        .padding(horizontal = 10.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(HIcons.Cast, null, tint = HarborColors.Accent, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(device.name, style = MaterialTheme.typography.bodyMedium, color = HarborColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            stringResource(if (device is com.synrg.harbor.cast.CastDevice.Chromecast) R.string.cast_kind_chromecast else R.string.cast_kind_tv),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = HarborColors.TextFaint,
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -41,8 +41,9 @@ data class HeroItem(
     val genres: List<String>,
 )
 
+/** [personId] is TMDB's person id, known only with a TMDB key; without one, the person is found by name. */
 @Immutable
-data class CastMember(val id: Int, val name: String, val character: String?, val profilePath: String?)
+data class CastMember(val id: Int, val name: String, val character: String?, val profilePath: String?, val personId: Int? = null)
 
 @Immutable
 data class SeasonInfo(val number: Int, val name: String, val episodeCount: Int)
@@ -74,7 +75,46 @@ data class Details(
     val logoPath: String?,
     val status: String?,
     val certification: String?,
+    /** TMDB's collection for a movie (direct API only); without a key, sagas come from Wikidata. */
+    val collectionId: Int? = null,
+    /** Where the title streams, rents or sells in the region (direct API only). */
+    val providers: WatchProviders? = null,
 )
+
+/** An actor or director: who they are and what they were in, best known first. */
+@Immutable
+data class Person(
+    val name: String,
+    val profilePath: String?,
+    val biography: String?,
+    val department: String?,
+    val birthday: String?,
+    val deathday: String?,
+    val birthplace: String?,
+    /** Most known titles first. */
+    val knownFor: List<MediaItem>,
+    /** Everything, newest first. */
+    val credits: List<MediaItem>,
+)
+
+/** The movies of a saga, in release order. */
+@Immutable
+data class Saga(val name: String, val parts: List<MediaItem>)
+
+@Immutable
+data class WatchProvider(val id: Int, val name: String, val logoPath: String?)
+
+/** Legal services that have a title in the user's region (TMDB's data, from JustWatch). */
+@Immutable
+data class WatchProviders(
+    val link: String?,
+    val stream: List<WatchProvider>,
+    val free: List<WatchProvider>,
+    val rent: List<WatchProvider>,
+    val buy: List<WatchProvider>,
+) {
+    val isEmpty: Boolean get() = stream.isEmpty() && free.isEmpty() && rent.isEmpty() && buy.isEmpty()
+}
 
 /** Image URLs from TMDB paths at the size each place needs; full URLs (other hosts) pass through. */
 object Img {

@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="detail_more_like_this">Títulos semelhantes</string>
+    <string name="detail_error_title">Não foi possível abrir</string>
+    <string name="detail_no_connection">Sem conexão</string>
+    <string name="detail_back">Voltar</string>
+    <string name="detail_downloading_toast">Baixando… veja em Minha lista → Downloads</string>
+    <string name="detail_runtime_hm">%1$d h %2$d min</string>
+    <string name="detail_runtime_min">%1$d min</string>
+    <plurals name="detail_seasons">
+        <item quantity="one">%1$d temporada</item>
+        <item quantity="many">%1$d temporadas</item>
+        <item quantity="other">%1$d temporadas</item>
+    </plurals>
+    <string name="detail_streams">Fontes</string>
+    <string name="detail_in_list">Na minha lista</string>
+    <string name="detail_add_to_list">Adicionar à lista</string>
+    <string name="detail_alerts_off">Desativar notificações de novos episódios</string>
+    <string name="detail_alerts_on">Avisar sobre novos episódios</string>
+    <string name="detail_airs_on">Estreia em %1$s</string>
+    <string name="detail_cast">Elenco</string>
+    <string name="detail_play_now">Assistir agora</string>
+    <string name="detail_resume_movie">Continuar · faltam %1$d min</string>
+    <string name="detail_resume_episode">Continuar %1$s</string>
+    <string name="detail_watch_again">Assistir de novo</string>
+    <string name="detail_next_episode">Próximo episódio</string>
+    <string name="detail_download_done_movie">Baixado · assista offline</string>
+    <string name="detail_download_done">Baixado</string>
+    <string name="detail_download_progress">Baixando %1$d%%</string>
+    <string name="detail_download_queued">Download na fila</string>
+    <string name="detail_download_waiting_wifi">Download aguardando Wi-Fi</string>
+    <string name="detail_download_paused">Download pausado</string>
+    <string name="detail_download_failed">Falha no download</string>
+
+    <string name="watched_movie_done">Assistido</string>
+    <string name="watched_movie_mark">Já assisti</string>
+    <string name="watched_season_done">Temporada assistida</string>
+    <string name="watched_season_mark">Marcar temporada</string>
+    <string name="watched_episode_done">Assistido</string>
+    <string name="watched_mark">Marcar como assistido</string>
+    <string name="watched_unmark">Marcar como não assistido</string>
+    <string name="watched_mark_episode">Marcar episódio como assistido</string>
+    <string name="watched_mark_movie">Marcar como assistido</string>
+
+    <string name="streams_filter_all">Todas</string>
+    <string name="streams_filter_other">Outras</string>
+    <string name="streams_pick">Escolha uma fonte</string>
+    <string name="streams_no_response">Sem resposta</string>
+    <plurals name="streams_count">
+        <item quantity="one">%1$d fonte</item>
+        <item quantity="many">%1$d fontes</item>
+        <item quantity="other">%1$d fontes</item>
+    </plurals>
+    <string name="streams_resume_same">Continuar com a mesma fonte</string>
+    <string name="streams_from_min">a partir do min %1$d</string>
+    <string name="streams_play_download">Assistir o download</string>
+    <string name="streams_download_offline">Está no seu celular: não precisa de dados nem de internet</string>
+    <string name="streams_cached">⚡ Em cache</string>
+    <plurals name="streams_seeds">
+        <item quantity="one">%1$d seed</item>
+        <item quantity="many">%1$d seeds</item>
+        <item quantity="other">%1$d seeds</item>
+    </plurals>
+    <string name="streams_torrent_no_engine">torrent: falta o motor</string>
+    <string name="streams_download">Baixar</string>
+    <string name="streams_fallback_title">Fonte %1$d</string>
+    <string name="streams_error_no_imdb">Este título não tem ID do IMDb, então os addons não conseguem encontrá-lo.</string>
+    <string name="streams_error_no_addons">Você não tem addons de fontes ativados. Adicione em Ajustes.</string>
+
+    <string name="continue_title">Continuar assistindo</string>
+    <string name="continue_empty_title">Nada em andamento</string>
+    <string name="continue_empty_text">O que você começar a assistir aparece aqui, inclusive o que assistir no Stremio ou no Harbor do computador. Os novos episódios das suas séries também.</string>
+    <string name="continue_nothing_now">Nada em andamento agora.</string>
+    <string name="continue_coming_soon">Em breve</string>
+    <string name="continue_new_badge">NOVO</string>
+    <string name="continue_episode_label">T%1$d · E%2$d</string>
+    <string name="continue_remaining">Faltam %1$d min</string>
+    <string name="continue_almost_done">Quase no fim</string>
+    <string name="continue_options">Opções</string>
+    <string name="continue_open_details">Ver detalhes</string>
+    <string name="continue_remove">Remover de Continuar assistindo</string>
+    <string name="continue_aired_today">Estreou hoje</string>
+    <string name="continue_airs_today">Estreia hoje</string>
+    <string name="continue_aired_yesterday">Estreou ontem</string>
+    <string name="continue_airs_tomorrow">Estreia amanhã</string>
+    <string name="continue_aired_on">Estreou %1$s</string>
+    <string name="continue_airs_on">Estreia %1$s</string>
+    <string name="continue_just_now">agora mesmo</string>
+    <string name="continue_minutes_ago">há %1$d min</string>
+    <string name="continue_hours_ago">há %1$d h</string>
+    <string name="continue_yesterday">ontem</string>
+    <plurals name="continue_days_ago">
+        <item quantity="one">há %1$d dia</item>
+        <item quantity="many">há %1$d dias</item>
+        <item quantity="other">há %1$d dias</item>
+    </plurals>
+
+    <string name="meta_row_trending">Em alta esta semana</string>
+    <string name="meta_row_popular_movies">Filmes populares</string>
+    <string name="meta_row_popular_series">Séries populares</string>
+    <string name="meta_row_new_releases">Lançamentos</string>
+    <string name="meta_row_anime">Anime</string>
+    <string name="meta_row_new_series">Séries novas</string>
+    <string name="meta_row_scifi">Ficção científica</string>
+    <string name="meta_row_comedy">Para dar risada</string>
+    <string name="meta_row_horror">Terror</string>
+    <string name="meta_row_now_playing">Nos cinemas</string>
+    <string name="meta_row_top_movies">Filmes mais bem avaliados</string>
+    <string name="meta_row_top_series">Séries aclamadas</string>
+    <string name="meta_row_airing">Séries em exibição</string>
+    <string name="meta_error_server">O servidor de detalhes respondeu %1$d</string>
+    <string name="meta_error_not_found">Não foi possível encontrar este título</string>
+    <string name="meta_error_incomplete">Os detalhes deste título vieram incompletos</string>
+    <string name="meta_error_tmdb">O TMDB respondeu %1$d</string>
+
+    <string name="person_known_for">Conhecido por</string>
+    <string name="person_filmography">Filmografia</string>
+    <string name="person_born_in">Nasceu em %1$s, em %2$s</string>
+    <string name="person_born">Nasceu em %1$s</string>
+    <string name="person_lived">%1$s – %2$s</string>
+    <string name="person_dept_acting">Atuação</string>
+    <string name="person_dept_directing">Direção</string>
+    <string name="person_dept_writing">Roteiro</string>
+    <string name="person_dept_production">Produção</string>
+    <string name="person_error">Não foi possível carregar esta página</string>
+    <string name="person_empty">Nenhum título encontrado</string>
+
+    <string name="detail_saga_here">Você está aqui</string>
+    <string name="detail_where_to_watch">Onde assistir</string>
+    <string name="providers_stream">Assinatura</string>
+    <string name="providers_free">Grátis</string>
+    <string name="providers_rent">Alugar</string>
+    <string name="providers_buy">Comprar</string>
+    <string name="providers_source">Dados do JustWatch, via TMDB</string>
+
+    <string name="detail_download_season">Baixar temporada</string>
+    <string name="detail_download_season_title">Baixar a temporada %1$d?</string>
+    <string name="detail_download_season_go">Baixar</string>
+    <string name="detail_season_looking">Procurando fontes…</string>
+    <string name="detail_season_nothing">Essa temporada já está baixada</string>
+    <string name="streams_auto_choosing">Escolhendo a melhor fonte…</string>
+    <string name="streams_auto_cancel">Eu escolho</string>
+    <plurals name="detail_download_season_body">
+        <item quantity="one">%1$d episódio será baixado com a melhor fonte, conforme seus limites em Ajustes → Reprodução.</item>
+        <item quantity="many">%1$d episódios serão baixados um após o outro, cada um com a melhor fonte, conforme seus limites em Ajustes → Reprodução.</item>
+        <item quantity="other">%1$d episódios serão baixados um após o outro, cada um com a melhor fonte, conforme seus limites em Ajustes → Reprodução.</item>
+    </plurals>
+    <plurals name="detail_season_queued">
+        <item quantity="one">Baixando %1$d episódio</item>
+        <item quantity="many">Baixando %1$d episódios</item>
+        <item quantity="other">Baixando %1$d episódios</item>
+    </plurals>
+    <plurals name="detail_season_missing">
+        <item quantity="one">sem fonte para %1$d</item>
+        <item quantity="many">sem fonte para %1$d</item>
+        <item quantity="other">sem fonte para %1$d</item>
+    </plurals>
+</resources>

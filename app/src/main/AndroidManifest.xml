@@ -11,6 +11,10 @@
     <!-- Downloads keep going in the background, with their progress in a notification. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Play on a TV: find DLNA TVs (multicast), and keep serving the video with the screen off. -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
     <application
         android:name=".HarborApp"
@@ -58,10 +62,33 @@
             android:name=".update.UpdateReceiver"
             android:exported="false" />
 
+        <!-- Home screen widget: Continue watching. -->
+        <receiver
+            android:name=".widget.ContinueWidget"
+            android:exported="false"
+            android:label="@string/continue_title">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_continue_info" />
+        </receiver>
+
         <service
             android:name=".downloads.DownloadService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <service
+            android:name=".cast.CastService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <!-- Google Cast reads its settings from here; Cast itself starts only from "Play on a TV". -->
+        <meta-data
+            android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
+            android:value="com.synrg.harbor.cast.CastOptionsProvider" />
 
         <service
             android:name=".episodes.EpisodeCheckJob"

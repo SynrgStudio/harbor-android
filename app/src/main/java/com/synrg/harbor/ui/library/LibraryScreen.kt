@@ -1,5 +1,11 @@
 package com.synrg.harbor.ui.library
 
+import androidx.compose.foundation.layout.width
+
+import androidx.compose.foundation.layout.Spacer
+
+import com.synrg.harbor.ui.components.RoundIconButton
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,7 +42,7 @@ import com.synrg.harbor.ui.components.PosterCard
 import com.synrg.harbor.ui.theme.HarborColors
 
 @Composable
-fun LibraryScreen(bottomPadding: Dp, onOpen: (MediaItem) -> Unit, onDownloads: () -> Unit) {
+fun LibraryScreen(bottomPadding: Dp, onOpen: (MediaItem) -> Unit, onDownloads: () -> Unit, onStats: () -> Unit) {
     val graph = LocalContext.current.graph
     val items by remember { graph.watchlist.items }.collectAsState(initial = emptyList())
     val downloads by graph.downloads.items.collectAsState()
@@ -44,6 +50,8 @@ fun LibraryScreen(bottomPadding: Dp, onOpen: (MediaItem) -> Unit, onDownloads: (
     Column(Modifier.fillMaxSize().background(HarborColors.Bg).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(start = 20.dp, top = 12.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.library_title), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+            RoundIconButton(HIcons.Chart, stringResource(R.string.stats_title), onStats, size = 46.dp)
+            Spacer(Modifier.width(8.dp))
             val active = downloads.items.count { it.active }
             val done = downloads.items.count { it.status == DownloadStatus.Done }
             GlassButton(

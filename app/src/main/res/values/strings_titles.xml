@@ -122,4 +122,50 @@
     <string name="meta_error_not_found">Couldn\'t find this title</string>
     <string name="meta_error_incomplete">This title\'s details came back incomplete</string>
     <string name="meta_error_tmdb">TMDB returned %1$d</string>
+
+    <!-- People (actor and director pages) -->
+    <string name="person_known_for">Known for</string>
+    <string name="person_filmography">Filmography</string>
+    <!-- Birth date, then birthplace. -->
+    <string name="person_born_in">Born %1$s in %2$s</string>
+    <string name="person_born">Born %1$s</string>
+    <!-- Birth and death dates. -->
+    <string name="person_lived">%1$s – %2$s</string>
+    <string name="person_dept_acting">Acting</string>
+    <string name="person_dept_directing">Directing</string>
+    <string name="person_dept_writing">Writing</string>
+    <string name="person_dept_production">Production</string>
+    <string name="person_error">Couldn\'t load this page</string>
+    <string name="person_empty">No titles found</string>
+
+    <!-- Saga and where to watch, on a title page -->
+    <string name="detail_saga_here">You are here</string>
+    <string name="detail_where_to_watch">Where to watch</string>
+    <string name="providers_stream">Subscription</string>
+    <string name="providers_free">Free</string>
+    <string name="providers_rent">Rent</string>
+    <string name="providers_buy">Buy</string>
+    <!-- TMDB's terms ask to credit JustWatch next to this data. -->
+    <string name="providers_source">Data from JustWatch, through TMDB</string>
+
+    <!-- Season download (button by "Episodes") and "Play the best stream right away" -->
+    <string name="detail_download_season">Download season</string>
+    <string name="detail_download_season_title">Download season %1$d?</string>
+    <string name="detail_download_season_go">Download</string>
+    <string name="detail_season_looking">Looking for streams…</string>
+    <string name="detail_season_nothing">That season is already downloaded</string>
+    <string name="streams_auto_choosing">Choosing the best stream…</string>
+    <string name="streams_auto_cancel">Let me choose</string>
+    <plurals name="detail_download_season_body">
+        <item quantity="one">Its %1$d episode downloads with the best stream by your limits in Settings → Playback.</item>
+        <item quantity="other">Its %1$d episodes download one after another, each with the best stream by your limits in Settings → Playback.</item>
+    </plurals>
+    <plurals name="detail_season_queued">
+        <item quantity="one">%1$d episode downloading</item>
+        <item quantity="other">%1$d episodes downloading</item>
+    </plurals>
+    <plurals name="detail_season_missing">
+        <item quantity="one">no stream found for %1$d</item>
+        <item quantity="other">no stream found for %1$d</item>
+    </plurals>
 </resources>

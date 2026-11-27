@@ -39,6 +39,8 @@ object ApiCacheInterceptor : Interceptor {
             request.url.host == "api.themoviedb.org" -> 60 * 60
             request.url.host == TmdbAddon.HOST && "/catalog/" in request.url.encodedPath -> 3 * 60 * 60
             request.url.encodedPath.endsWith("/manifest.json") -> 6 * 60 * 60
+            // Sagas and filmographies: they change on the scale of months.
+            request.url.host == "query.wikidata.org" -> 7 * 24 * 60 * 60
             else -> return response
         }
         return response.newBuilder()

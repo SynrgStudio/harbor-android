@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_home">Início</string>
+    <string name="nav_continue">Continuar</string>
+    <string name="nav_search">Buscar</string>
+    <string name="nav_library">Minha lista</string>
+    <string name="nav_settings">Ajustes</string>
+
+    <string name="app_addon_installed">%1$s instalado</string>
+    <string name="app_addon_install_failed">Não foi possível instalar o addon</string>
+    <string name="app_shortcut_long">Continuar: %1$s</string>
+
+    <string name="home_connect_title">Entre na sua conta do Stremio</string>
+    <string name="home_connect_body">Traz seus addons, o que você está assistindo e sua lista, igual ao Stremio e ao Harbor no computador.</string>
+    <string name="home_connect_action">Entrar</string>
+    <string name="home_continue_watching">Continuar assistindo</string>
+    <string name="home_load_failed">Não foi possível carregar</string>
+    <string name="home_error_offline">Sem conexão</string>
+    <string name="home_type_movie">Filme</string>
+    <string name="home_type_series">Série</string>
+    <string name="home_play">Assistir</string>
+    <string name="home_details">Detalhes</string>
+    <string name="home_minutes_left">Faltam %1$d min</string>
+    <string name="home_almost_done">Quase no fim</string>
+
+    <string name="library_title">Minha lista</string>
+    <string name="library_downloads">Downloads</string>
+    <string name="library_downloads_count">Downloads · %1$d</string>
+    <string name="library_empty_title">Nada salvo ainda</string>
+    <string name="library_empty_body">Toque em “Adicionar à lista” em qualquer filme ou série e ele aparece aqui.</string>
+
+    <string name="search_title">Buscar</string>
+    <string name="search_hint">Filmes, séries, anime…</string>
+    <string name="search_clear">Limpar</string>
+    <string name="search_trending">Em alta</string>
+    <string name="search_searching">Buscando…</string>
+    <string name="search_no_results">Nenhum resultado para “%1$s”</string>
+    <string name="search_results">Resultados</string>
+
+    <string name="update_available">Nova versão disponível: %1$s</string>
+    <string name="update_action">Atualizar</string>
+    <string name="update_downloading">Baixando o Harbor %1$s…</string>
+    <string name="update_permission_title">É preciso uma permissão para instalar</string>
+    <string name="update_permission_body">O Android precisa que \"Instalar apps desconhecidos\" esteja ativado para o Harbor. Ative e volte: a instalação continua sozinha.</string>
+    <string name="update_open_android_settings">Abrir configurações do Android</string>
+    <string name="update_installing">Instalando o Harbor %1$s…</string>
+    <string name="update_installing_body">Confirme no aviso do Android. O app fecha quando terminar; abra de novo.</string>
+    <string name="update_failed">Não foi possível atualizar</string>
+    <string name="update_error_github">O GitHub respondeu %1$d</string>
+    <string name="update_error_download">Não foi possível baixar</string>
+    <string name="update_error_download_status">O download respondeu %1$d</string>
+    <string name="update_error_corrupt">O download chegou corrompido; tente de novo</string>
+    <string name="update_error_file_gone">O arquivo baixado sumiu; baixe de novo</string>
+    <string name="update_error_install">Não foi possível instalar</string>
+    <string name="update_error_android">O Android não conseguiu instalar</string>
+
+    <string name="settings_title">Ajustes</string>
+    <string name="settings_stremio_title">Conta do Stremio</string>
+    <string name="settings_stremio_subtitle">Traz seus addons e mantém “Continuar assistindo” e “Minha lista” iguais no Stremio, no Harbor para computador e aqui.</string>
+    <string name="settings_sync">Sincronizar</string>
+    <string name="settings_syncing">Sincronizando…</string>
+    <string name="settings_sync_failed">Não foi possível sincronizar</string>
+    <plurals name="settings_sync_addons">
+        <item quantity="one">%1$d addon</item>
+        <item quantity="many">%1$d addons</item>
+        <item quantity="other">%1$d addons</item>
+    </plurals>
+    <string name="settings_sync_continue_watching">%1$d em Continuar assistindo</string>
+    <plurals name="settings_sync_added">
+        <item quantity="one">%1$d novo na Minha lista</item>
+        <item quantity="many">%1$d novos na Minha lista</item>
+        <item quantity="other">%1$d novos na Minha lista</item>
+    </plurals>
+    <string name="settings_sign_out">Sair</string>
+    <string name="settings_email">E-mail</string>
+    <string name="settings_password">Senha</string>
+    <string name="settings_sign_in">Entrar</string>
+    <string name="settings_signing_in">Entrando…</string>
+    <string name="settings_signed_in">Conta conectada</string>
+    <string name="settings_sign_in_failed">Não foi possível entrar</string>
+    <string name="settings_password_note">A senha só é usada para iniciar a sessão; o Harbor guarda a chave da sessão, não a senha.</string>
+
+    <string name="settings_addons_title">Addons de fontes</string>
+    <string name="settings_addons_subtitle">Todos são consultados ao mesmo tempo; cada um aparece assim que responde.</string>
+    <string name="settings_addons_empty">Nenhum addon. Entre na sua conta ou cole a URL de um addon.</string>
+    <string name="settings_addon_url">URL do addon (manifest.json ou stremio://)</string>
+    <string name="settings_add_addon">Adicionar addon</string>
+    <string name="settings_adding_addon">Adicionando…</string>
+    <string name="settings_addon_added">%1$s adicionado</string>
+    <string name="settings_addon_invalid">Não é um addon válido</string>
+    <string name="settings_addon_streams">fontes</string>
+    <string name="settings_addon_subtitles">legendas</string>
+
+    <string name="settings_playback_title">Reprodução</string>
+    <string name="settings_preferred_audio">Áudio preferido</string>
+    <string name="settings_subtitles">Legendas</string>
+    <string name="settings_subtitle_size">Tamanho da legenda</string>
+    <string name="settings_size_small">Pequeno</string>
+    <string name="settings_size_normal">Normal</string>
+    <string name="settings_size_large">Grande</string>
+    <string name="settings_size_huge">Enorme</string>
+    <string name="settings_autoplay_next">Próximo episódio automático</string>
+    <string name="settings_ask_mobile_data">Perguntar antes de usar dados móveis</string>
+    <string name="settings_lang_original">Original</string>
+    <string name="settings_lang_off">Nenhuma</string>
+    <string name="settings_lang_spanish">Espanhol</string>
+    <string name="settings_lang_english">Inglês</string>
+    <string name="settings_lang_japanese">Japonês</string>
+    <string name="settings_lang_spanish_latam">Espanhol (Latam)</string>
+    <string name="settings_lang_spanish_spain">Espanhol (Espanha)</string>
+
+    <string name="settings_downloads_title">Downloads</string>
+    <string name="settings_downloads_subtitle">Para assistir offline, toque em ⬇ em uma fonte. Eles ficam em Minha lista → Downloads.</string>
+    <string name="settings_download_wifi_only">Baixar só no Wi-Fi</string>
+
+    <string name="settings_alerts_title">Notificações</string>
+    <string name="settings_alerts_subtitle">Quando sai um episódio novo de uma série da sua lista ou que você está assistindo. Também aparecem em Continuar.</string>
+    <string name="settings_alerts_toggle">Avisar sobre novos episódios</string>
+    <string name="settings_alerts_blocked">O Android está bloqueando as notificações do Harbor.</string>
+    <string name="settings_alerts_allow">Permitir notificações</string>
+
+    <string name="settings_metadata_title">Detalhes e imagens</string>
+    <string name="settings_metadata_subtitle">Vêm do TMDB pelo addon dele, sem precisar de chave. Com sua própria chave do TMDB, você também recebe recomendações e classificação indicativa.</string>
+    <string name="settings_language">Idioma</string>
+    <string name="settings_tmdb_key">Chave do TMDB (opcional)</string>
+    <string name="settings_save_key">Salvar chave</string>
+    <string name="settings_key_cleared">Usando o TMDB sem chave</string>
+    <string name="settings_key_saved">Chave salva</string>
+
+    <string name="settings_updates_title">Atualizações</string>
+    <string name="settings_updates_subtitle">Você tem a versão %1$s. As novas saem no GitHub e são instaladas por cima desta, sem perder nada.</string>
+    <string name="settings_updates_toggle">Avisar quando houver uma nova versão</string>
+    <string name="settings_check_now">Verificar agora</string>
+    <string name="settings_checking">Verificando…</string>
+    <string name="settings_up_to_date">Você tem a versão mais recente</string>
+    <string name="settings_check_failed">Não foi possível acessar o GitHub</string>
+    <string name="settings_version_footer">Harbor para Android %1$s</string>
+
+    <string name="settings_subtitle_style">Estilo da legenda</string>
+    <string name="settings_subtitle_color">Cor</string>
+    <string name="settings_color_white">Branco</string>
+    <string name="settings_color_yellow">Amarelo</string>
+    <string name="settings_color_cyan">Azul-claro</string>
+    <string name="settings_subtitle_edge">Borda</string>
+    <string name="settings_edge_outline">Contorno</string>
+    <string name="settings_edge_shadow">Sombra</string>
+    <string name="settings_edge_box">Fundo</string>
+    <string name="settings_subtitle_font">Tipo de letra</string>
+    <string name="settings_font_medium">Normal</string>
+    <string name="settings_font_bold">Negrito</string>
+    <string name="settings_font_serif">Serifa</string>
+    <string name="settings_subtitle_position">Altura</string>
+    <string name="settings_position_low">Baixa</string>
+    <string name="settings_position_normal">Normal</string>
+    <string name="settings_position_high">Alta</string>
+    <string name="settings_subtitle_sample">É assim que as legendas vão aparecer.</string>
+
+    <string name="settings_auto_play">Reproduzir a melhor fonte direto</string>
+    <string name="settings_auto_play_hint">“Assistir agora” pula a lista e reproduz a melhor fonte dentro destes limites. Os downloads de temporada e os inteligentes também usam esses limites.</string>
+    <string name="settings_auto_quality">Qualidade máxima</string>
+    <string name="settings_auto_size">Tamanho máximo</string>
+    <string name="settings_size_any">Sem limite</string>
+    <string name="settings_smart_downloads">Downloads inteligentes</string>
+    <string name="settings_smart_downloads_hint">Quando você termina um episódio baixado, ele é apagado e o próximo é baixado.</string>
+    <string name="settings_storage">Salvar downloads em</string>
+    <string name="settings_storage_phone">Celular</string>
+    <string name="settings_storage_sd">Cartão SD</string>
+    <string name="settings_storage_hint">Os downloads que você já tem ficam onde estão.</string>
+
+    <string name="widget_description">O que você está assistindo, a um toque de continuar</string>
+
+    <string name="settings_backup_title">Backup</string>
+    <string name="settings_backup_subtitle">Seu progresso, a Minha lista, os ajustes e os addons em um arquivo, para guardar ou levar para outro celular. Seu login do Stremio e a chave do TMDB ficam de fora; os links dos addons podem conter chaves, então não compartilhe o arquivo.</string>
+    <string name="settings_backup_export">Exportar</string>
+    <string name="settings_backup_import">Importar</string>
+    <string name="settings_backup_saved">Backup salvo</string>
+    <string name="settings_backup_write_failed">Não foi possível salvar o arquivo</string>
+    <string name="settings_backup_failed">Esse arquivo não é um backup do Harbor</string>
+    <string name="settings_backup_restored">Restaurado: %1$d com progresso, %2$d adicionados à Minha lista</string>
+
+    <string name="stats_title">Suas estatísticas</string>
+    <string name="stats_this_year">%1$d</string>
+    <string name="stats_all_time">Desde sempre</string>
+    <string name="stats_time">assistindo no Harbor</string>
+    <string name="stats_busiest_day">Dia em que você mais assiste: %1$s.</string>
+    <string name="stats_by_month">Por mês</string>
+    <string name="stats_top">Mais assistidos</string>
+    <string name="stats_note">O tempo conta a partir da versão 0.8.0 neste celular. Filmes e episódios terminados também incluem o que você assistiu no Stremio.</string>
+    <string name="stats_empty_title">Nada ainda</string>
+    <string name="stats_empty_body">Assista a algo e volte aqui.</string>
+    <plurals name="stats_movies">
+        <item quantity="one">filme</item>
+        <item quantity="many">filmes</item>
+        <item quantity="other">filmes</item>
+    </plurals>
+    <plurals name="stats_episodes">
+        <item quantity="one">episódio</item>
+        <item quantity="many">episódios</item>
+        <item quantity="other">episódios</item>
+    </plurals>
+    <plurals name="stats_series">
+        <item quantity="one">série</item>
+        <item quantity="many">séries</item>
+        <item quantity="other">séries</item>
+    </plurals>
+    <string name="settings_lang_portuguese">Português</string>
+</resources>

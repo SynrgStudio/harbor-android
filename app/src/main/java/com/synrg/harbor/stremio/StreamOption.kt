@@ -21,6 +21,8 @@ data class StreamOption(
     val quality: Quality,
     val tags: List<String>,
     val sizeLabel: String?,
+    /** The file's size when the addon says it (exactly, or in its text). */
+    val sizeBytes: Long?,
     val seeders: Int?,
     val source: String?,
     val languages: List<String>,
@@ -81,6 +83,15 @@ object StreamParser {
             ?: Strings.get(R.string.streams_fallback_title, index + 1)
         val sizeLabel = s.behaviorHints?.videoSize?.takeIf { it > 0 }?.let(::formatBytes)
             ?: size.find(body)?.let { "${it.groupValues[1].replace(',', '.')} ${it.groupValues[2].uppercase(Locale.ROOT)}" }
+        val sizeBytes = s.behaviorHints?.videoSize?.takeIf { it > 0 } ?: size.find(body)?.let { m ->
+            val n = m.groupValues[1].replace(',', '.').toDoubleOrNull() ?: return@let null
+            val unit = when (m.groupValues[2].uppercase(Locale.ROOT)) {
+                "TB" -> 1_099_511_627_776.0
+                "GB" -> 1_073_741_824.0
+                else -> 1_048_576.0
+            }
+            (n * unit).toLong()
+        }
         val sourceName = source.find(body)?.groupValues?.get(1)?.trim()?.takeIf { it.length in 2..40 }
         val trackers = s.sources.orEmpty()
             .filter { it.startsWith("tracker:") }
@@ -103,6 +114,7 @@ object StreamParser {
             quality = quality,
             tags = tagRules.filter { (_, r) -> r.containsMatchIn(all) }.map { it.first }.distinct(),
             sizeLabel = sizeLabel,
+            sizeBytes = sizeBytes,
             seeders = seeds.find(body)?.groupValues?.get(1)?.toIntOrNull(),
             source = sourceName,
             languages = flag.findAll(body).map { it.value }.distinct().take(6).toList(),

@@ -4,6 +4,7 @@ import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -34,9 +35,18 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.synrg.harbor.R
+import com.synrg.harbor.cast.CastDevice
+import com.synrg.harbor.cast.CastManager
+import com.synrg.harbor.cast.CastMedia
+import com.synrg.harbor.cast.CastService
+import com.synrg.harbor.cast.CastState
+import com.synrg.harbor.cast.LanServer
+import com.synrg.harbor.data.Img
 import com.synrg.harbor.core.Connection
 import com.synrg.harbor.core.Strings
+import com.synrg.harbor.data.IntroSkip
 import com.synrg.harbor.data.MediaType
+import com.synrg.harbor.data.Settings
 import com.synrg.harbor.data.ProgressEntry
 import com.synrg.harbor.data.SubtitleChoice
 import com.synrg.harbor.data.SubtitleShift
@@ -50,6 +60,10 @@ import com.synrg.harbor.torrent.TorrentStats
 import com.synrg.harbor.torrent.TorrentStream
 import com.synrg.harbor.ui.theme.HarborTheme
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.Request
+import java.io.File
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -81,6 +95,11 @@ data class PlayerStatus(
     val sleep: SleepTimer? = null,
     /** The timer was set to stop after this video: no next-episode countdown. */
     val stoppedByTimer: Boolean = false,
+    /** This series' intro, learned from earlier episodes: "Skip intro" jumps its length. */
+    val intro: IntroSkip? = null,
+    val introUsed: Boolean = false,
+    /** The second subtitle on screen (drawn by the app, at the top). */
+    val second: StremioSubtitle? = null,
 )
 
 @Immutable
@@ -124,6 +143,16 @@ class PlayerActivity : ComponentActivity() {
     private var dataApproved = false
     private var dataDecision: CompletableDeferred<Boolean>? = null
     private var sleepJob: Job? = null
+    private val sound = SoundEffects()
+    private val introLearner = IntroLearner { learned -> saveIntro(learned) }
+    private var introJob: Job? = null
+    private var secondJob: Job? = null
+    private var smartHandled: String? = null
+    /** This player sent its video to a TV (the phone's player is paused meanwhile). */
+    private var castingHere = false
+    private val _secondCues = MutableStateFlow<List<SubtitleCue>>(emptyList())
+    /** The second subtitle's lines, empty when it is off or still loading. */
+    val secondCues: StateFlow<List<SubtitleCue>> = _secondCues
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -166,7 +195,12 @@ class PlayerActivity : ComponentActivity() {
                 true,
             )
             .build()
-            .apply { addListener(listener) }
+            .apply {
+                addListener(listener)
+                // An explicit session, so the sound effects have something to attach to from the start.
+                getSystemService(AudioManager::class.java)?.generateAudioSessionId()?.let { audioSessionId = it }
+                sound.apply(audioSessionId, graph.settings.current)
+            }
     }
 
     private val listener = object : Player.Listener {
@@ -205,6 +239,18 @@ class PlayerActivity : ComponentActivity() {
         }
 
         override fun onVideoSizeChanged(videoSize: VideoSize) = updatePipParams()
+
+        override fun onAudioSessionIdChanged(audioSessionId: Int) = sound.apply(audioSessionId, graph.settings.current)
+
+        override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {
+            if (reason != Player.DISCONTINUITY_REASON_SEEK || _status.value.request?.type != MediaType.Tv) return
+            introLearner.onSeek(oldPosition.positionMs, newPosition.positionMs, SystemClock.elapsedRealtime())
+            introJob?.cancel()
+            introJob = lifecycleScope.launch {
+                delay(IntroLearner.MERGE_MS + 500)
+                introLearner.finish()
+            }
+        }
 
         override fun onTracksChanged(tracks: Tracks) {
             if (!autoSubtitlesDone && pendingSubtitleId == null) applyPreferredSubtitles(tracks)
@@ -304,6 +350,8 @@ class PlayerActivity : ComponentActivity() {
         subtitleLanguage = pref.subtitle ?: settings.subtitleLanguage
         savedSubtitle = pref.subtitleChoice.takeIf { subtitleLanguage.isNotEmpty() }
         applySubtitleDelay(pref.subtitleDelay?.takeIf { it.video == request.progressKey }?.ms ?: 0L)
+        _status.update { it.copy(intro = pref.intro.takeIf { request.type == MediaType.Tv }, introUsed = false) }
+        pref.secondSubtitle?.let { autoSecondSubtitle(request, it) }
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
             .clearOverrides()
             .setPreferredAudioLanguage(audio.ifEmpty { null })
@@ -377,6 +425,144 @@ class PlayerActivity : ComponentActivity() {
         }
     }
 
+    // --- Play on a TV -----------------------------------------------------------------------------
+
+    val castState: StateFlow<CastState?> get() = graph.cast.state
+    val castDevices: StateFlow<List<CastDevice>> get() = graph.cast.devices
+    val castSearching: StateFlow<Boolean> get() = graph.cast.searching
+
+    /** The picker is open: look for Chromecasts and TVs. */
+    fun openCastPicker() = graph.cast.discover()
+
+    fun closeCastPicker() = graph.cast.stopDiscovery()
+
+    /** Sends what is playing to [device], from the same minute and with the same subtitle. */
+    fun castTo(device: CastDevice) {
+        val request = _status.value.request ?: return
+        val uri = player.currentMediaItem?.localConfiguration?.uri?.toString() ?: return
+        val position = player.currentPosition
+        player.pause()
+        castingHere = true
+        lifecycleScope.launch {
+            val subtitle = runCatching { subtitleForTv() }.getOrNull()
+            val local = CastManager.localFile(uri)
+            val headers = request.stream.headers
+            val mime = CastManager.mimeFor(request.stream.filename ?: uri)
+            val source = if (local != null) LanServer.Item.LocalFile(local, mime) else LanServer.Item.Upstream(uri, headers, mime)
+            // The torrent engine only listens on the phone itself; links with headers need the phone too.
+            val direct = uri.takeIf { local == null && headers.isEmpty() && !uri.startsWith("http://127.0.0.1") && !uri.startsWith("http://localhost") }
+            val media = CastMedia(
+                directUrl = direct, source = source, mime = mime,
+                title = request.title, subtitle = request.displaySubtitle,
+                image = Img.backdrop(request.backdrop, "w1280") ?: Img.poster(request.poster, "w780"),
+                startMs = position, subtitles = subtitle?.first, subtitleLanguage = subtitle?.second,
+            )
+            CastService.start(this@PlayerActivity)
+            graph.cast.start(device, media)
+        }
+    }
+
+    fun castTogglePause() = graph.cast.togglePause()
+
+    fun castSeek(ms: Long) = graph.cast.seek(ms)
+
+    /** Back to the phone, from where the TV was. */
+    fun stopCasting() {
+        castingHere = false
+        lifecycleScope.launch {
+            val position = graph.cast.stop()
+            if (position > 0) player.seekTo(position)
+            player.play()
+        }
+    }
+
+    /** The internet or downloaded subtitle on screen, read and shifted by the sync set by hand (a file's own track can't be sent). */
+    private suspend fun subtitleForTv(): Pair<List<SubtitleCue>, String?>? {
+        if (player.trackSelectionParameters.disabledTrackTypes.contains(C.TRACK_TYPE_TEXT)) return null
+        val selectedId = player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_TEXT && it.isSelected }
+            .firstNotNullOfOrNull { g -> (0 until g.length).firstOrNull { g.isTrackSelected(it) }?.let { g.getTrackFormat(it).id } } ?: return null
+        val config = player.currentMediaItem?.localConfiguration?.subtitleConfigurations
+            ?.firstOrNull { cfg -> cfg.id?.let { selectedId.contains(it) } == true } ?: return null
+        val shift = _status.value.subtitleDelayMs
+        val cues = withContext(Dispatchers.IO) { readCues(config.uri.toString()) }
+            .map { it.copy(startMs = (it.startMs + shift).coerceAtLeast(0), endMs = (it.endMs + shift).coerceAtLeast(0)) }
+        return cues to config.language
+    }
+
+    // --- Sound -----------------------------------------------------------------------------------
+
+    /** Night mode, clearer dialogue and boost: saved for every video, applied right away. */
+    fun updateSound(transform: (Settings) -> Settings) {
+        graph.settings.update(transform)
+        sound.apply(player.audioSessionId, graph.settings.current)
+    }
+
+    // --- Skip intro ------------------------------------------------------------------------------
+
+    private fun saveIntro(intro: IntroSkip) {
+        val request = _status.value.request?.takeIf { it.type == MediaType.Tv } ?: return
+        graph.progress.updateTrackPref(request.type, request.tmdbId) { it.copy(intro = intro) }
+        _status.update { if (it.request == request) it.copy(intro = intro) else it }
+    }
+
+    fun skipIntro() {
+        val intro = _status.value.intro ?: return
+        val duration = player.duration.takeIf { it > 0 } ?: Long.MAX_VALUE
+        player.seekTo((player.currentPosition + intro.lengthMs).coerceAtMost(duration - 1_000))
+        _status.update { it.copy(introUsed = true) }
+    }
+
+    // --- Second subtitle -------------------------------------------------------------------------
+
+    /** Turns the second subtitle on with [sub] (or off), and remembers its language for this title. */
+    fun selectSecondSubtitle(sub: StremioSubtitle?) {
+        val request = _status.value.request ?: return
+        graph.progress.updateTrackPref(request.type, request.tmdbId) {
+            it.copy(secondSubtitle = sub?.let { s -> Languages.toIso2(s.lang) ?: s.lang })
+        }
+        showSecond(sub)
+    }
+
+    private fun showSecond(sub: StremioSubtitle?) {
+        secondJob?.cancel()
+        _secondCues.value = emptyList()
+        _status.update { it.copy(second = sub) }
+        if (sub == null) return
+        secondJob = lifecycleScope.launch {
+            // One more try: subtitle servers drop a request now and then.
+            val cues = withContext(Dispatchers.IO) {
+                runCatching { readCues(sub.url) }.getOrNull()?.takeIf { it.isNotEmpty() }
+                    ?: runCatching { readCues(sub.url) }.getOrDefault(emptyList())
+            }
+            if (_status.value.second != sub) return@launch
+            if (cues.isEmpty()) {
+                _status.update { it.copy(second = null) }
+                android.widget.Toast.makeText(this@PlayerActivity, R.string.subs_second_failed, android.widget.Toast.LENGTH_SHORT).show()
+            } else {
+                _secondCues.value = cues
+            }
+        }
+    }
+
+    /** The title's second language from last time: its first file that isn't the main subtitle. */
+    private fun autoSecondSubtitle(request: PlaybackRequest, language: String) {
+        lifecycleScope.launch {
+            val subs = fetchExternalSubtitles()
+            if (_status.value.request != request || _status.value.second != null) return@launch
+            val main = savedSubtitle?.externalUrl
+            subs.firstOrNull { Languages.matches(it.lang, language) && graph.downloads.subtitleSource(it.url) != main }?.let(::showSecond)
+        }
+    }
+
+    private fun readCues(url: String): List<SubtitleCue> {
+        val bytes = if (url.startsWith("file:")) {
+            File(Uri.parse(url).path ?: return emptyList()).readBytes()
+        } else {
+            graph.mediaHttp.newCall(Request.Builder().url(url).build()).execute().use { it.body.bytes() }
+        }
+        return SubtitleFile.parse(SubtitleFile.decode(bytes))
+    }
+
     private fun load(intent: Intent?) {
         val raw = intent?.getStringExtra(EXTRA) ?: return finish()
         val request = runCatching { graph.json.decodeFromString(PlaybackRequest.serializer(), raw) }.getOrNull() ?: return finish()
@@ -384,6 +570,11 @@ class PlayerActivity : ComponentActivity() {
     }
 
     private fun start(request: PlaybackRequest) {
+        // A skip in progress belongs to the video that is ending.
+        introJob?.cancel()
+        introLearner.finish()
+        secondJob?.cancel()
+        _secondCues.value = emptyList()
         loadJob?.cancel()
         statsJob?.cancel()
         prefetchJob?.cancel()
@@ -509,7 +700,10 @@ class PlayerActivity : ComponentActivity() {
         progressJob = lifecycleScope.launch {
             while (isActive) {
                 delay(5_000)
-                if (player.isPlaying) saveProgress(flush = false)
+                if (player.isPlaying || (castingHere && graph.cast.state.value?.playing == true)) {
+                    saveProgress(flush = false)
+                    _status.value.request?.let { r -> graph.watchLog.add(r.type, r.tmdbId, r.title, r.poster, 5) }
+                }
                 maybePrefetchNext()
             }
         }
@@ -539,9 +733,11 @@ class PlayerActivity : ComponentActivity() {
     fun saveProgress(ended: Boolean = false, flush: Boolean = true) {
         if (!::player.isInitialized) return
         val request = _status.value.request ?: return
-        val duration = player.duration
+        // On a TV: its position is the one that counts.
+        val tv = graph.cast.state.value?.takeIf { castingHere && it.durationMs > 0 }
+        val duration = tv?.durationMs ?: player.duration
         if (duration == C.TIME_UNSET || duration <= 0) return
-        val position = if (ended) duration else player.currentPosition
+        val position = if (ended) duration else tv?.positionMs ?: player.currentPosition
         val entry = ProgressEntry(
                 key = request.progressKey,
                 type = request.type,
@@ -560,6 +756,11 @@ class PlayerActivity : ComponentActivity() {
                 lastStream = request.stream,
             )
         graph.progress.save(entry)
+        // Smart downloads: once per video, when it counts as watched.
+        if (entry.finished && smartHandled != request.progressKey) {
+            smartHandled = request.progressKey
+            graph.autoDownloads.episodeFinished(request)
+        }
         if (flush) {
             graph.progress.flush()
             graph.sync.progressChanged(entry) // pauses, exits and endings reach the Stremio account
@@ -749,9 +950,11 @@ class PlayerActivity : ComponentActivity() {
 
     override fun onDestroy() {
         saveProgress()
+        if (castingHere) graph.scope.launch { graph.cast.stop() }
         val ids = listOfNotNull(torrentId, preparedTorrent?.second?.torrentId)
         graph.scope.launch { ids.forEach { graph.torrents.close(it) } }
         player.removeListener(listener)
+        sound.release()
         player.release()
         super.onDestroy()
     }

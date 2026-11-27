@@ -93,6 +93,21 @@ class TmdbAddon(
         }
     }
 
+    /**
+     * A person's titles without a key: the addon's search finds the movies and series a name
+     * worked on. Titles *about* them (documentaries named after them) and talk, news or reality
+     * appearances are left out.
+     */
+    suspend fun personCredits(name: String): List<MediaItem> = coroutineScope {
+        val movies = async { runCatching { catalog(MediaType.Movie, "tmdb.search", "search" to name) }.getOrDefault(emptyList()) }
+        val series = async { runCatching { catalog(MediaType.Tv, "tmdb.search", "search" to name) }.getOrDefault(emptyList()) }
+        val lower = name.lowercase()
+        (movies.await() + series.await()).filter { item ->
+            item.posterPath != null && item.year != null && lower !in item.title.lowercase() &&
+                item.genres.none { it in APPEARANCE_GENRES }
+        }.distinctBy { "${it.type}:${it.id}" }
+    }
+
     suspend fun meta(type: MediaType, id: Int): AddonMeta {
         val key = "${settings.current.language}:${type.stremio}:$id"
         metaCache[key]?.let { return it }
@@ -163,6 +178,8 @@ class TmdbAddon(
         const val HOST = "tmdb.elfhosted.com"
         private const val BASE_URL = "https://$HOST/"
         private val STALE_OK = CacheControl.Builder().onlyIfCached().maxStale(30, TimeUnit.DAYS).build()
+        /** Genre names (as the addon spells them in each language) of shows people appear in as themselves. */
+        private val APPEARANCE_GENRES = setOf("Talk", "News", "Noticias", "Notícias", "Reality", "Documentary", "Documental", "Documentário")
         private val TMDB_IMAGE = Regex("""^https?://image\.tmdb\.org/t/p/[^/]+(/.+)$""")
         private val RUNTIME = Regex("""(?:(\d+)\s*h)?\s*(?:(\d+)\s*min)?""")
 

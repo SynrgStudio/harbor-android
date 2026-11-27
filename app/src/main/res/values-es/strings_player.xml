@@ -79,4 +79,31 @@
     <string name="subs_sync_hint">Si aparecen antes de que hablen, sumá; si aparecen tarde, restá.</string>
     <string name="subs_language_unknown">Desconocido</string>
     <string name="subs_language_brazil">%1$s (Brasil)</string>
+
+    <string name="player_skip_intro">Saltar intro · %1$s</string>
+
+    <string name="subs_second">Segundo subtítulo</string>
+    <string name="subs_second_hint">Se muestra arriba, en otro idioma: para aprender uno o para ver con alguien que lee otro.</string>
+    <string name="subs_second_failed">No se pudo cargar ese subtítulo: probá con otro</string>
+
+    <string name="sound_title">Sonido</string>
+    <string name="sound_night">Modo noche</string>
+    <string name="sound_night_hint">Empareja las escenas fuertes y las bajas</string>
+    <string name="sound_dialogue">Diálogos más claros</string>
+    <string name="sound_dialogue_hint">Realza las voces sobre la música y los efectos</string>
+    <string name="sound_boost">Volumen extra</string>
+    <string name="sound_boost_hint">Más allá del máximo del celular, para videos bajos</string>
+    <string name="sound_boost_off">No</string>
+
+    <string name="cast_title">Ver en la tele</string>
+    <string name="cast_searching">Buscando teles y Chromecasts en este Wi-Fi…</string>
+    <string name="cast_none">No apareció nada. La tele o el Chromecast tienen que estar prendidos y en el mismo Wi-Fi que el celular.</string>
+    <string name="cast_kind_chromecast">Chromecast</string>
+    <string name="cast_kind_tv">Smart TV (DLNA)</string>
+    <string name="cast_playing_on">Reproduciendo en %1$s</string>
+    <string name="cast_connecting">Conectando…</string>
+    <string name="cast_failed">La tele no lo pudo reproducir. Algunas no aceptan todos los formatos (MKV, HEVC, DTS…): probá con otra fuente.</string>
+    <string name="cast_back_to_phone">Seguir en el celular</string>
+    <string name="cast_stop">Detener</string>
+    <string name="cast_channel">Reproducción en la tele</string>
 </resources>

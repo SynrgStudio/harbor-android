@@ -63,9 +63,12 @@ import com.synrg.harbor.ui.detail.DetailViewModel
 import com.synrg.harbor.ui.home.HomeScreen
 import com.synrg.harbor.ui.home.HomeViewModel
 import com.synrg.harbor.ui.library.LibraryScreen
+import com.synrg.harbor.ui.person.PersonScreen
+import com.synrg.harbor.ui.person.PersonViewModel
 import com.synrg.harbor.ui.search.SearchScreen
 import com.synrg.harbor.ui.search.SearchViewModel
 import com.synrg.harbor.ui.settings.SettingsScreen
+import com.synrg.harbor.ui.stats.StatsScreen
 import com.synrg.harbor.ui.theme.HIcons
 import com.synrg.harbor.ui.theme.HarborColors
 import dev.chrisbanes.haze.ExperimentalHazeApi
@@ -83,8 +86,11 @@ import kotlinx.serialization.Serializable
 @Serializable object LibraryRoute
 @Serializable object SettingsRoute
 @Serializable object DownloadsRoute
+@Serializable object StatsRoute
 /** [season]: the one to show first (a new episode's), instead of the one being watched. */
 @Serializable data class DetailRoute(val type: String, val id: Int, val autoplay: Boolean = false, val season: Int? = null)
+/** [titleImdb]: the title the person was opened from, to tell apart people with the same name. */
+@Serializable data class PersonRoute(val name: String, val personId: Int? = null, val photo: String? = null, val titleImdb: String? = null)
 
 private data class Tab(val route: Any, @StringRes val label: Int, val icon: ImageVector)
 
@@ -181,7 +187,7 @@ fun HarborRoot(links: MutableStateFlow<AppLink?>) {
                 SearchScreen(vm, bottomPadding, onOpen = { open(it) })
             }
             composable<LibraryRoute> {
-                LibraryScreen(bottomPadding, onOpen = { open(it) }, onDownloads = { nav.navigate(DownloadsRoute) })
+                LibraryScreen(bottomPadding, onOpen = { open(it) }, onDownloads = { nav.navigate(DownloadsRoute) }, onStats = { nav.navigate(StatsRoute) })
             }
             composable<DownloadsRoute> {
                 DownloadsScreen(
@@ -193,6 +199,9 @@ fun HarborRoot(links: MutableStateFlow<AppLink?>) {
                     },
                 )
             }
+            composable<StatsRoute> {
+                StatsScreen(onBack = { nav.popBackStack() }, onOpen = { open(it) })
+            }
             composable<SettingsRoute> {
                 SettingsScreen(bottomPadding)
             }
@@ -200,7 +209,15 @@ fun HarborRoot(links: MutableStateFlow<AppLink?>) {
                 val route = backStack.toRoute<DetailRoute>()
                 val type = MediaType.fromTmdb(route.type) ?: MediaType.Movie
                 val vm: DetailViewModel = viewModel { DetailViewModel(graph, type, route.id, route.autoplay, route.season) }
-                DetailScreen(vm, onBack = { nav.popBackStack() }, onOpen = { open(it) }, onPlay = ::play)
+                DetailScreen(
+                    vm, onBack = { nav.popBackStack() }, onOpen = { open(it) }, onPlay = ::play,
+                    onPerson = { person, imdb -> nav.navigate(PersonRoute(person.name, person.personId, person.profilePath, imdb)) },
+                )
+            }
+            composable<PersonRoute> { backStack ->
+                val route = backStack.toRoute<PersonRoute>()
+                val vm: PersonViewModel = viewModel { PersonViewModel(graph, route.name, route.personId, route.photo, route.titleImdb) }
+                PersonScreen(vm, onBack = { nav.popBackStack() }, onOpen = { open(it) })
             }
         }
 

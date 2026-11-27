@@ -1,12 +1,12 @@
 package com.synrg.harbor.player
 
-import android.graphics.Typeface
 import android.media.AudioManager
 import android.os.SystemClock
 import android.provider.Settings
 import androidx.annotation.StringRes
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -77,9 +77,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
-import androidx.media3.ui.SubtitleView
 import coil3.compose.AsyncImage
 import com.synrg.harbor.R
 import com.synrg.harbor.core.Connection
@@ -117,7 +115,7 @@ private class UiPlayerState(private val player: Player) : Player.Listener {
     }
 }
 
-private enum class PlayerPanel { Tracks, Sleep }
+private enum class PlayerPanel { Tracks, Sleep, Cast }
 
 /** What a vertical/horizontal swipe is adjusting, shown in the centre while dragging. */
 @Immutable
@@ -136,6 +134,8 @@ fun PlayerScreen(player: ExoPlayer, controller: PlayerActivity) {
         onDispose { player.removeListener(ui) }
     }
     val settings = remember { context.graph.settings.current }
+    val secondCues by controller.secondCues.collectAsStateWithLifecycle()
+    val cast by controller.castState.collectAsStateWithLifecycle()
     val audio = remember { context.getSystemService(AudioManager::class.java) }
 
     var controlsVisible by remember { mutableStateOf(true) }
@@ -164,8 +164,9 @@ fun PlayerScreen(player: ExoPlayer, controller: PlayerActivity) {
 
     // Position updates only while someone can see them (controls, PiP, or the next-episode card).
     val nearEnd = status.hasNext && ui.duration > 0 && ui.duration - ui.position < 32_000
-    LaunchedEffect(controlsVisible, status.pip, nearEnd, status.nextUp) {
-        while (controlsVisible || status.pip || status.nextUp != null) {
+    val watchIntro = status.intro != null && !status.introUsed
+    LaunchedEffect(controlsVisible, status.pip, nearEnd, status.nextUp, watchIntro) {
+        while (controlsVisible || status.pip || status.nextUp != null || watchIntro) {
             ui.tick()
             delay(if (controlsVisible) 250 else 1_000)
         }
@@ -203,21 +204,7 @@ fun PlayerScreen(player: ExoPlayer, controller: PlayerActivity) {
                     setShutterBackgroundColor(android.graphics.Color.BLACK)
                     setKeepContentOnPlayerReset(true)
                     this.player = player
-                    subtitleView?.apply {
-                        setApplyEmbeddedFontSizes(false)
-                        setStyle(
-                            CaptionStyleCompat(
-                                android.graphics.Color.WHITE,
-                                android.graphics.Color.TRANSPARENT,
-                                android.graphics.Color.TRANSPARENT,
-                                CaptionStyleCompat.EDGE_TYPE_OUTLINE,
-                                android.graphics.Color.BLACK,
-                                Typeface.create("sans-serif-medium", Typeface.NORMAL),
-                            ),
-                        )
-                        setFractionalTextSize(SubtitleView.DEFAULT_TEXT_SIZE_FRACTION * 1.12f * settings.subtitleScale)
-                        setBottomPaddingFraction(0.06f)
-                    }
+                    subtitleView?.let { SubtitleStyle.apply(it, settings) }
                 }
             },
             update = { it.resizeMode = resize },
@@ -225,6 +212,26 @@ fun PlayerScreen(player: ExoPlayer, controller: PlayerActivity) {
         )
 
         if (status.pip) return@Box
+
+        // On a TV: the phone becomes the remote.
+        cast?.let { tv ->
+            CastingView(
+                tv, status.request,
+                onBack = { controller.finish() },
+                onToggle = controller::castTogglePause,
+                onSeek = controller::castSeek,
+                onPhone = controller::stopCasting,
+            )
+            return@Box
+        }
+
+        if (secondCues.isNotEmpty()) {
+            SecondSubtitle(
+                player, secondCues, status.subtitleDelayMs, settings,
+                lowered = controlsVisible && !lockActive,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
+        }
 
         // Gestures: tap toggles controls, double tap on a side skips 10 s; horizontal swipe seeks,
         // vertical swipe on the left/right half sets brightness/volume. Edges are left to Android.
@@ -338,6 +345,11 @@ fun PlayerScreen(player: ExoPlayer, controller: PlayerActivity) {
             LoadingIndicator(status)
         }
 
+        val intro = status.intro
+        val skipIntro = intro != null && !status.introUsed && ui.position in IntroLearner.window(intro) &&
+            status.error == null && !lockActive && ui.duration > 0
+        val skipIntroLabel = intro?.let { stringResource(R.string.player_skip_intro, formatTime(it.lengthMs)) }
+
         val next = status.nextUp
         val showNextCard = next != null && (nearEnd || status.ended) && !nextDismissed && status.error == null && !showTracks && !lockActive
         AnimatedVisibility(
@@ -361,6 +373,10 @@ fun PlayerScreen(player: ExoPlayer, controller: PlayerActivity) {
                     panel = PlayerPanel.Sleep
                     lastPanel = PlayerPanel.Sleep
                 },
+                onCast = {
+                    panel = PlayerPanel.Cast
+                    lastPanel = PlayerPanel.Cast
+                },
                 onLock = {
                     locked = true
                     controlsVisible = false
@@ -372,12 +388,24 @@ fun PlayerScreen(player: ExoPlayer, controller: PlayerActivity) {
                 },
                 onPip = { controller.enterPip() },
                 onNext = { controller.playNext() },
+                skipIntroLabel = skipIntroLabel.takeIf { skipIntro },
+                onSkipIntro = { controller.skipIntro(); interaction++ },
                 onScrub = { scrubbing = it; interaction++ },
                 onInteract = { interaction++ },
             )
         }
 
         hud?.let { HudView(it, Modifier.align(Alignment.Center)) }
+
+        // With the controls hidden, "Skip intro" stands on its own, like the next-episode card.
+        AnimatedVisibility(
+            visible = skipIntro && !controlsVisible && !showTracks && hud == null,
+            enter = fadeIn(tween(200)),
+            exit = fadeOut(tween(200)),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 28.dp, bottom = 44.dp),
+        ) {
+            GlassButton(skipIntroLabel.orEmpty(), HIcons.SkipNext, { controller.skipIntro() })
+        }
 
         AnimatedVisibility(
             visible = showNextCard,
@@ -445,6 +473,7 @@ fun PlayerScreen(player: ExoPlayer, controller: PlayerActivity) {
         ) {
             when (panel ?: lastPanel) {
                 PlayerPanel.Tracks -> TracksPanel(player, status, controller, onClose = { panel = null })
+                PlayerPanel.Cast -> CastPanel(controller, onPicked = { panel = null }, onClose = { panel = null })
                 PlayerPanel.Sleep -> SleepPanel(
                     current = status.sleep,
                     isEpisode = status.request?.episode != null,
@@ -456,6 +485,95 @@ fun PlayerScreen(player: ExoPlayer, controller: PlayerActivity) {
                 )
             }
         }
+    }
+}
+
+/** Playing on a TV: what, where, and the controls, with the title's artwork behind. */
+@Composable
+private fun CastingView(
+    tv: com.synrg.harbor.cast.CastState,
+    request: PlaybackRequest?,
+    onBack: () -> Unit,
+    onToggle: () -> Unit,
+    onSeek: (Long) -> Unit,
+    onPhone: () -> Unit,
+) {
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        AsyncImage(
+            Img.backdrop(request?.backdrop, "w1280") ?: Img.poster(request?.poster, "w780"), null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+            alpha = 0.3f,
+        )
+        RoundIconButton(HIcons.Back, stringResource(R.string.player_exit), onBack, modifier = Modifier.padding(start = 28.dp, top = 18.dp))
+        Column(
+            Modifier.align(Alignment.Center).widthIn(max = 560.dp).padding(horizontal = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(HIcons.CastConnected, null, tint = HarborColors.Accent, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.cast_playing_on, tv.device.name), style = MaterialTheme.typography.labelLarge, color = HarborColors.Accent)
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(request?.title.orEmpty(), style = MaterialTheme.typography.titleLarge, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            request?.displaySubtitle?.let {
+                Text(it, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.75f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Spacer(Modifier.height(22.dp))
+            when {
+                tv.failed -> Text(
+                    stringResource(R.string.cast_failed),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = HarborColors.Warn,
+                    textAlign = TextAlign.Center,
+                )
+                tv.connecting -> Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(Modifier.size(22.dp), color = HarborColors.Accent, strokeWidth = 2.5.dp)
+                    Spacer(Modifier.width(12.dp))
+                    Text(stringResource(R.string.cast_connecting), style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                }
+                else -> {
+                    Row(horizontalArrangement = Arrangement.spacedBy(44.dp), verticalAlignment = Alignment.CenterVertically) {
+                        SkipButton(forward = false) { onSeek(tv.positionMs - 10_000) }
+                        Box(contentAlignment = Alignment.Center) {
+                            RoundIconButton(
+                                if (tv.playing) HIcons.Pause else HIcons.Play,
+                                stringResource(if (tv.playing) R.string.player_pause else R.string.player_play),
+                                onToggle, size = 72.dp,
+                            )
+                            if (tv.loading) CircularProgressIndicator(Modifier.size(80.dp), color = HarborColors.Accent, strokeWidth = 2.dp)
+                        }
+                        SkipButton(forward = true) { onSeek(tv.positionMs + 10_000) }
+                    }
+                    Spacer(Modifier.height(18.dp))
+                    SeekBar(position = tv.positionMs, buffered = 0, duration = tv.durationMs, onSeek = onSeek, onScrub = {})
+                    Row(Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                        Text(formatTime(tv.positionMs), style = MaterialTheme.typography.labelMedium, color = Color.White)
+                        Spacer(Modifier.weight(1f))
+                        Text(if (tv.durationMs > 0) formatTime(tv.durationMs) else "--:--", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.75f))
+                    }
+                }
+            }
+            Spacer(Modifier.height(18.dp))
+            GlassButton(stringResource(R.string.cast_back_to_phone), HIcons.Pip, onPhone)
+        }
+    }
+}
+
+/** The second subtitle, at the top (below the controls while they show), in the user's subtitle style. */
+@Composable
+private fun SecondSubtitle(player: Player, cues: List<SubtitleCue>, delayMs: Long, settings: com.synrg.harbor.data.Settings, lowered: Boolean, modifier: Modifier) {
+    var text by remember(cues) { mutableStateOf<String?>(null) }
+    LaunchedEffect(cues, delayMs) {
+        while (true) {
+            text = SubtitleFile.at(cues, player.currentPosition - delayMs)
+            delay(100)
+        }
+    }
+    val top by animateDpAsState(if (lowered) 84.dp else 18.dp, tween(200), label = "second")
+    text?.let {
+        StyledSubtitle(it, settings, (18 * settings.subtitleScale).sp, modifier.padding(top = top, start = 56.dp, end = 56.dp))
     }
 }
 
@@ -560,10 +678,13 @@ private fun Controls(
     onBack: () -> Unit,
     onTracks: () -> Unit,
     onSleep: () -> Unit,
+    onCast: () -> Unit,
     onLock: () -> Unit,
     onResize: () -> Unit,
     onPip: () -> Unit,
     onNext: () -> Unit,
+    skipIntroLabel: String?,
+    onSkipIntro: () -> Unit,
     onScrub: (Boolean) -> Unit,
     onInteract: () -> Unit,
 ) {
@@ -599,6 +720,7 @@ private fun Controls(
                 Text(it, style = MaterialTheme.typography.labelSmall, color = HarborColors.Accent, modifier = Modifier.padding(end = 12.dp))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                RoundIconButton(HIcons.Cast, stringResource(R.string.cast_title), onCast)
                 RoundIconButton(HIcons.Lock, stringResource(R.string.player_lock_screen), onLock)
                 RoundIconButton(HIcons.Bedtime, stringResource(R.string.sleep_timer), onSleep, tint = if (status.sleep != null) HarborColors.Accent else Color.White)
                 RoundIconButton(HIcons.Subtitles, stringResource(R.string.player_audio_subtitles), onTracks)
@@ -631,9 +753,11 @@ private fun Controls(
         }
 
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 28.dp, vertical = 16.dp)) {
-            if (showNextButton && status.hasNext && request?.episode != null) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    GlassButton(stringResource(R.string.player_next), HIcons.SkipNext, onNext)
+            val next = showNextButton && status.hasNext && request?.episode != null
+            if (next || skipIntroLabel != null) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End)) {
+                    if (skipIntroLabel != null) GlassButton(skipIntroLabel, HIcons.SkipNext, onSkipIntro)
+                    if (next) GlassButton(stringResource(R.string.player_next), HIcons.SkipNext, onNext)
                 }
                 Spacer(Modifier.height(10.dp))
             }

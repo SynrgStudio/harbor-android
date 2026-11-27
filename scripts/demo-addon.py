@@ -3,6 +3,10 @@
     python scripts/demo-addon.py
 Then add http://10.0.2.2:7311/manifest.json in the app's Settings (on the emulator; 10.0.2.2 is the PC).
 It serves Tears of Steel and Sintel streams and Tears of Steel subtitles from download.blender.org.
+
+    python scripts/demo-addon.py --series tt0903747
+Also answers every episode of that series with Tears of Steel, to test series features on the
+emulator (next episode, skip intro, smart downloads). Not for pictures: the page shows real titles.
 """
 import json
 import sys
@@ -51,6 +55,11 @@ SUBTITLES = {
 }
 
 
+SERIES = sys.argv[sys.argv.index("--series") + 1] if "--series" in sys.argv else None
+if SERIES:
+    MANIFEST["types"] = ["movie", "series"]
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split("?")[0]
@@ -60,6 +69,8 @@ class Handler(BaseHTTPRequestHandler):
             body = MANIFEST
         elif len(parts) >= 3 and parts[0] in ("stream", "subtitles"):
             vid = parts[2].removesuffix(".json").split(":")[0]
+            if SERIES and vid == SERIES:
+                vid = "tt2285752"
             table = STREAMS if parts[0] == "stream" else SUBTITLES
             body = {parts[0] + "s" if parts[0] == "stream" else "subtitles": table.get(vid, [])}
         if body is None:

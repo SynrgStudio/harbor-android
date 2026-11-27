@@ -10,6 +10,7 @@ import com.synrg.harbor.data.Details
 import com.synrg.harbor.data.Episode
 import com.synrg.harbor.data.MediaType
 import com.synrg.harbor.data.ProgressEntry
+import com.synrg.harbor.data.Saga
 import com.synrg.harbor.data.SavedStream
 import com.synrg.harbor.downloads.DownloadItem
 import com.synrg.harbor.player.PlaybackRequest
@@ -18,7 +19,10 @@ import com.synrg.harbor.stremio.MarkTitle
 import com.synrg.harbor.stremio.MarkVideo
 import com.synrg.harbor.stremio.StreamOption
 import com.synrg.harbor.stremio.StremioSync
+import android.os.SystemClock
+import com.synrg.harbor.stremio.StreamRules
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -45,6 +49,8 @@ data class StreamsUi(
     val groups: List<AddonStreams>,
     val resume: ProgressEntry?,
     val error: String? = null,
+    /** Choosing by itself ("Play the best stream right away"), until it plays or the user picks. */
+    val auto: Boolean = false,
 )
 
 @Immutable
@@ -56,6 +62,8 @@ data class DetailState(
     val season: Int? = null,
     val episodes: List<Episode>? = null,
     val episodesLoading: Boolean = false,
+    /** The saga a movie is part of, filled in after the page is up. */
+    val saga: Saga? = null,
 )
 
 class DetailViewModel(
@@ -144,6 +152,14 @@ class DetailViewModel(
     private var streamsJob: Job? = null
     private var seasonJob: Job? = null
 
+    private val _messages = Channel<String>(Channel.BUFFERED)
+    /** Short notes for a toast (season downloads). */
+    val messages: Flow<String> = _messages.receiveAsFlow()
+
+    private val _seasonBusy = MutableStateFlow(false)
+    /** Looking for the streams of a season to download. */
+    val seasonBusy: StateFlow<Boolean> = _seasonBusy
+
     init {
         load()
     }
@@ -155,6 +171,7 @@ class DetailViewModel(
                 .onSuccess { details ->
                     _state.update { it.copy(details = details, partial = false) }
                     if (details.recommendations.isEmpty()) loadRecommendations(details)
+                    if (type == MediaType.Movie && _state.value.saga == null) loadSaga(details)
                     loadRemoteWatched(details)
                     if (type == MediaType.Tv) {
                         val latest = progress.value.values.maxByOrNull { it.updatedAt }
@@ -178,6 +195,11 @@ class DetailViewModel(
         if (recs.isNotEmpty()) {
             _state.update { s -> s.copy(details = s.details?.copy(recommendations = recs)) }
         }
+    }
+
+    private fun loadSaga(details: Details) = viewModelScope.launch {
+        val saga = graph.meta.saga(details) ?: return@launch
+        if (saga.parts.any { it.id == id }) _state.update { it.copy(saga = saga) }
     }
 
     private fun loadRemoteWatched(details: Details) {
@@ -255,7 +277,7 @@ class DetailViewModel(
             }
             val saved = entry?.lastStream?.takeIf { !entry.finished && entry.positionMs > 0 && playable(it) }
             val request = saved?.let { playbackRequest(target, it) }
-            if (request != null) _playRequests.send(request) else openStreams(target)
+            if (request != null) _playRequests.send(request) else openStreams(target, auto = graph.settings.current.autoPlayBest)
         }
     }
 
@@ -301,7 +323,42 @@ class DetailViewModel(
         return StreamTarget(season, episode, ep?.name, ep?.stillPath)
     }
 
-    fun openEpisode(ep: Episode) = openStreams(StreamTarget(ep.season, ep.number, ep.name, ep.stillPath))
+    fun openEpisode(ep: Episode) {
+        val target = StreamTarget(ep.season, ep.number, ep.name, ep.stillPath)
+        val auto = graph.settings.current.autoPlayBest
+        // Choosing by itself, a downloaded episode plays from the phone (the list offers it otherwise).
+        val local = if (auto) graph.downloads.local(ProgressEntry.key(type, id, ep.season, ep.number)) else null
+        if (local != null) _playRequests.trySend(playDownloaded(local)) else openStreams(target, auto)
+    }
+
+    /**
+     * Downloads the selected season's released episodes that aren't downloaded yet, each with the
+     * best stream by the rules. Runs on the app's scope: leaving the page doesn't stop it.
+     */
+    fun downloadSeason() {
+        val details = _state.value.details ?: return
+        val episodes = _state.value.episodes ?: return
+        if (_seasonBusy.value) return
+        _seasonBusy.value = true
+        val previous = lastStreamOfTitle()
+        graph.scope.launch {
+            val result = runCatching { graph.autoDownloads.downloadSeason(details, episodes, previous) }.getOrNull()
+            _seasonBusy.value = false
+            val message = when {
+                result == null -> Strings.get(R.string.detail_no_connection)
+                result.queued == 0 && result.missing == 0 -> Strings.get(R.string.detail_season_nothing)
+                result.missing == 0 -> Strings.plural(R.plurals.detail_season_queued, result.queued, result.queued)
+                else -> Strings.plural(R.plurals.detail_season_queued, result.queued, result.queued) + " · " +
+                    Strings.plural(R.plurals.detail_season_missing, result.missing, result.missing)
+            }
+            _messages.trySend(message)
+        }
+    }
+
+    /** The stream the title was last played with (not a download): its release is preferred for the next ones. */
+    private fun lastStreamOfTitle(): SavedStream? = progress.value.values
+        .filter { it.lastStream != null && it.lastStream.url?.startsWith("file:") != true }
+        .maxByOrNull { it.updatedAt }?.lastStream
 
     fun mainButtonLabel(progress: Map<String, ProgressEntry>): String {
         val latest = progress.values.maxByOrNull { it.updatedAt } ?: return Strings.get(R.string.detail_play_now)
@@ -315,7 +372,7 @@ class DetailViewModel(
         }
     }
 
-    fun openStreams(target: StreamTarget) {
+    fun openStreams(target: StreamTarget, auto: Boolean = false) {
         val details = _state.value.details ?: return
         streamsJob?.cancel()
         val key = ProgressEntry.key(type, id, target.season, target.episode)
@@ -325,9 +382,17 @@ class DetailViewModel(
             _streams.value = StreamsUi(target, emptyList(), resume, error = Strings.get(R.string.streams_error_no_imdb))
             return
         }
-        _streams.value = StreamsUi(target, emptyList(), resume)
+        _streams.value = StreamsUi(target, emptyList(), resume, auto = auto)
         val stremioId = if (target.season != null) "$imdb:${target.season}:${target.episode}" else imdb
+        val opened = SystemClock.elapsedRealtime()
         streamsJob = viewModelScope.launch {
+            // Slow addons don't hold the automatic choice for long: after a few seconds the best so far plays.
+            val deadline = if (auto) launch {
+                delay(AUTO_SOON_MS)
+                autoPick(target, opened, force = false)
+                delay(AUTO_LATEST_MS - AUTO_SOON_MS)
+                autoPick(target, opened, force = true)
+            } else null
             graph.addons.streams(type.stremio, stremioId).collect { update ->
                 _streams.update { ui ->
                     ui ?: return@update null
@@ -336,10 +401,38 @@ class DetailViewModel(
                     if (i >= 0) groups[i] = update else groups += update
                     ui.copy(groups = groups)
                 }
+                autoPick(target, opened, force = false)
             }
+            deadline?.cancel()
+            autoPick(target, opened, force = true)
             _streams.update { ui -> if (ui != null && ui.groups.isEmpty()) ui.copy(error = Strings.get(R.string.streams_error_no_addons)) else ui }
         }
     }
+
+    /**
+     * "Play the best stream right away": once every addon answered (or a few seconds passed with
+     * a good one), plays [StreamRules]' pick. Nothing acceptable: the list stays for the user.
+     */
+    private fun autoPick(target: StreamTarget, opened: Long, force: Boolean) {
+        val ui = _streams.value ?: return
+        if (!ui.auto || ui.target != target) return
+        val done = ui.groups.isNotEmpty() && ui.groups.none { it is AddonStreams.Loading }
+        val options = ui.groups.filterIsInstance<AddonStreams.Loaded>().flatMap { it.streams }
+        val previous = if (type == MediaType.Tv) lastStreamOfTitle() else null
+        val best = StreamRules.pick(options, graph.settings.current, graph.torrents.available, previous)
+        val waited = SystemClock.elapsedRealtime() - opened >= AUTO_SOON_MS
+        if (!done && !force && !(waited && best != null)) return
+        if (best == null) {
+            _streams.update { it?.copy(auto = false) }
+            return
+        }
+        val request = playbackRequest(target, best.saved) ?: return
+        _playRequests.trySend(request)
+        closeStreams()
+    }
+
+    /** "Let me choose" while it was choosing by itself. */
+    fun cancelAuto() = _streams.update { it?.copy(auto = false) }
 
     fun closeStreams() {
         streamsJob?.cancel()
@@ -368,4 +461,11 @@ class DetailViewModel(
     }
 
     fun requestFor(option: StreamOption, target: StreamTarget) = playbackRequest(target, option.saved)
+
+    private companion object {
+        /** With a good stream in hand, the automatic choice waits this long for the other addons. */
+        const val AUTO_SOON_MS = 5_000L
+        /** And never longer than this. */
+        const val AUTO_LATEST_MS = 12_000L
+    }
 }

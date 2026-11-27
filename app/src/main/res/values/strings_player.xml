@@ -87,4 +87,36 @@
     <string name="subs_language_unknown">Unknown</string>
     <!-- Brazilian Portuguese: %1$s is the language name. -->
     <string name="subs_language_brazil">%1$s (Brazil)</string>
+
+    <!-- Skip intro: the argument is how much it skips, e.g. "1:25". -->
+    <string name="player_skip_intro">Skip intro · %1$s</string>
+
+    <!-- Second subtitle -->
+    <string name="subs_second">Second subtitle</string>
+    <string name="subs_second_hint">Shown at the top, in another language: to learn one, or to watch with someone who reads another.</string>
+    <string name="subs_second_failed">Couldn\'t load that subtitle: try another one</string>
+
+    <!-- Sound (in the Audio tab) -->
+    <string name="sound_title">Sound</string>
+    <string name="sound_night">Night mode</string>
+    <string name="sound_night_hint">Evens out loud scenes and quiet ones</string>
+    <string name="sound_dialogue">Clearer dialogue</string>
+    <string name="sound_dialogue_hint">Lifts voices over music and effects</string>
+    <string name="sound_boost">Volume boost</string>
+    <string name="sound_boost_hint">Past the phone\'s maximum, for quiet videos</string>
+    <string name="sound_boost_off">Off</string>
+
+    <!-- Play on a TV (Chromecast or DLNA) -->
+    <string name="cast_title">Play on a TV</string>
+    <string name="cast_searching">Looking for TVs and Chromecasts on this Wi-Fi…</string>
+    <string name="cast_none">Nothing found. The TV or Chromecast has to be on, and on the same Wi-Fi as the phone.</string>
+    <string name="cast_kind_chromecast">Chromecast</string>
+    <string name="cast_kind_tv">Smart TV (DLNA)</string>
+    <!-- The argument is the TV's name. -->
+    <string name="cast_playing_on">Playing on %1$s</string>
+    <string name="cast_connecting">Connecting…</string>
+    <string name="cast_failed">The TV didn\'t play it. Some TVs can\'t play every format (MKV, HEVC, DTS…): try another stream.</string>
+    <string name="cast_back_to_phone">Watch on the phone</string>
+    <string name="cast_stop">Stop</string>
+    <string name="cast_channel">Playing on a TV</string>
 </resources>

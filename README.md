@@ -9,24 +9,30 @@ A fast, native movie and TV app for Android that works with your Stremio account
 ## Features
 
 - **Home:** featured carousel, Continue watching, trending, popular, new releases, anime and more.
-- **Title pages:** seasons, episodes, cast and similar titles. Works without any key through the TMDB addon; add your own TMDB key in Settings to use the API directly.
+- **Title pages:** seasons, episodes, cast, the movie's saga and similar titles. Works without any key through the TMDB addon; add your own TMDB key in Settings to use the API directly (it also shows where a title streams legally, with JustWatch's data).
+- **Actor and director pages:** what they're known for and their whole filmography (from TMDB with a key, from Wikidata without one).
 - **Stremio account:** sign in once and your addons, Continue watching, library and watched marks come along, and stay in sync with Stremio and Harbor desktop.
-- **Streams:** from your account's addons, from addons added by URL or through `stremio://` links. Sorted by debrid cache, quality and seeds, with resolution filters.
+- **Streams:** from your account's addons, from addons added by URL or through `stremio://` links. Sorted by debrid cache, quality and seeds, with resolution filters. Optionally, "Watch now" plays the best stream within your limits (top quality, largest file) without a list.
 - **Continue tab:** everything you're halfway through, new episodes of the series you follow, and what's coming soon. Resuming goes straight back to the player with the same stream.
 - **Player:**
   - Media3 + FFmpeg, including DTS and TrueHD.
   - Brightness, volume and seek gestures; double tap to skip.
   - Audio and subtitle tracks from the file or from subtitle addons, remembered per title.
-  - Subtitle delay, playback speed, picture-in-picture and autoplay of the next episode.
+  - Subtitle delay and style (color, edge, font, height), and a second subtitle in another language at the same time.
+  - Night mode, clearer dialogue and volume boost up to 200%.
+  - "Skip intro", learned from the first time you skip one by hand.
+  - Playback speed, picture-in-picture and autoplay of the next episode.
   - Screen lock and sleep timer.
   - Torrent streaming with librqbit.
-- **Downloads:** save movies and episodes with their subtitles to watch offline. Wi-Fi only by default.
+- **Play on a TV:** Chromecast / Google TV (needs Google Play services) and DLNA smart TVs on the same Wi-Fi, with the phone as the remote. Torrents and downloads too.
+- **Downloads:** save movies, episodes or a whole season with their subtitles to watch offline, on the phone or an SD card. Smart downloads delete what you watched and fetch the next episode. Wi-Fi only by default.
 - **Mobile data:** asks before streaming on a metered connection and keeps torrent uploads to a minimum there.
 - **Notifications** when a series you follow gets a new episode, with a per-series bell.
-- **Launcher shortcuts** to resume what you're watching.
+- **Launcher shortcuts** and a **home screen widget** to resume what you're watching.
+- **Stats** of what you watch, and a **backup** file with your progress, list, settings and addons (never your Stremio sign-in or TMDB key).
 - **In-app updates** from GitHub Releases, verified against the published SHA-256.
 
-Available in English and Spanish: it follows the phone's language, and on Android 13 or later you can pick it per app in the system settings.
+Available in English, Spanish and Brazilian Portuguese: it follows the phone's language, and on Android 13 or later you can pick it per app in the system settings.
 
 Harbor doesn't host or provide any content: it shows what the addons you configure return.
 
@@ -50,4 +56,4 @@ Without a release key in `local.properties`, builds are signed with the debug ke
 
 ## License
 
-[GPL-3.0-or-later](LICENSE). Uses Jellyfin's FFmpeg decoder (GPL-3.0) and [librqbit](https://github.com/ikatson/rqbit) (Apache-2.0). The Inter font is under the SIL Open Font License.
+[GPL-3.0-or-later](LICENSE). Uses Jellyfin's FFmpeg decoder (GPL-3.0) and [librqbit](https://github.com/ikatson/rqbit) (Apache-2.0). The Inter font is under the SIL Open Font License. Chromecast support uses Google's Cast library (part of Google Play services), which is only started when you open the TV list in the player.

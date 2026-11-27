@@ -34,7 +34,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -55,6 +57,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -63,7 +66,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.synrg.harbor.R
+import com.synrg.harbor.data.CastMember
 import com.synrg.harbor.data.Details
+import com.synrg.harbor.data.Saga
+import com.synrg.harbor.data.WatchProviders
 import com.synrg.harbor.data.Episode
 import com.synrg.harbor.data.Img
 import com.synrg.harbor.data.MediaItem
@@ -76,7 +82,9 @@ import com.synrg.harbor.episodes.EpisodeAlerts
 import com.synrg.harbor.player.PlaybackRequest
 import com.synrg.harbor.ui.components.GlassButton
 import com.synrg.harbor.ui.components.MessageBlock
+import com.synrg.harbor.ui.components.PosterCard
 import com.synrg.harbor.ui.components.PosterRow
+import com.synrg.harbor.ui.components.PosterShape
 import com.synrg.harbor.ui.components.PrimaryButton
 import com.synrg.harbor.ui.components.RatingText
 import com.synrg.harbor.ui.components.RoundIconButton
@@ -91,6 +99,7 @@ fun DetailScreen(
     onBack: () -> Unit,
     onOpen: (MediaItem) -> Unit,
     onPlay: (PlaybackRequest) -> Unit,
+    onPerson: (CastMember, String?) -> Unit,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val progress by vm.progress.collectAsStateWithLifecycle()
@@ -103,7 +112,11 @@ fun DetailScreen(
     val streams by vm.streams.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val downloadingToast = stringResource(R.string.detail_downloading_toast)
+    val lookingToast = stringResource(R.string.detail_season_looking)
+    val seasonBusy by vm.seasonBusy.collectAsStateWithLifecycle()
+    var confirmSeason by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(vm) { vm.playRequests.collect { onPlay(it) } }
+    LaunchedEffect(vm) { vm.messages.collect { Toast.makeText(context, it, Toast.LENGTH_LONG).show() } }
 
     Box(Modifier.fillMaxSize().background(HarborColors.Bg)) {
         val details = state.details
@@ -132,6 +145,9 @@ fun DetailScreen(
                     )
                 }
                 item(key = "overview", contentType = "overview") { Overview(details) }
+                details.providers?.takeUnless { it.isEmpty }?.let { providers ->
+                    item(key = "providers", contentType = "providers") { WhereToWatch(providers) }
+                }
                 if (details.item.type == MediaType.Tv && details.seasons.isNotEmpty()) {
                     val episodes = state.episodes
                     item(key = "seasons", contentType = "seasons") {
@@ -142,6 +158,8 @@ fun DetailScreen(
                             details, state.season, vm::selectSeason,
                             seasonWatched = seasonWatched.takeIf { released.isNotEmpty() },
                             onToggleSeason = { vm.setEpisodesWatched(released, !seasonWatched) },
+                            downloadBusy = seasonBusy,
+                            onDownloadSeason = if (released.isNotEmpty()) ({ confirmSeason = state.season }) else null,
                         )
                     }
                     if (episodes == null) {
@@ -162,8 +180,11 @@ fun DetailScreen(
                         }
                     }
                 }
+                state.saga?.let { saga ->
+                    item(key = "saga", contentType = "row") { SagaRow(saga, vm.id, onOpen) }
+                }
                 if (details.cast.isNotEmpty()) {
-                    item(key = "cast", contentType = "cast") { CastRow(details) }
+                    item(key = "cast", contentType = "cast") { CastRow(details) { onPerson(it, details.imdbId) } }
                 }
                 if (details.recommendations.isNotEmpty()) {
                     item(key = "recs", contentType = "row") { PosterRow(stringResource(R.string.detail_more_like_this), details.recommendations, onOpen) }
@@ -179,6 +200,26 @@ fun DetailScreen(
         RoundIconButton(
             HIcons.Back, stringResource(R.string.detail_back), onBack,
             modifier = Modifier.statusBarsPadding().padding(start = 12.dp, top = 6.dp),
+        )
+    }
+
+    confirmSeason?.let { season ->
+        val count = state.episodes.orEmpty().count { it.released }
+        AlertDialog(
+            onDismissRequest = { confirmSeason = null },
+            containerColor = HarborColors.Surface,
+            title = { Text(stringResource(R.string.detail_download_season_title, season)) },
+            text = { Text(pluralStringResource(R.plurals.detail_download_season_body, count, count), color = HarborColors.TextDim) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmSeason = null
+                    vm.downloadSeason()
+                    Toast.makeText(context, lookingToast, Toast.LENGTH_SHORT).show()
+                }) { Text(stringResource(R.string.detail_download_season_go), color = HarborColors.Accent) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmSeason = null }) { Text(stringResource(R.string.common_cancel), color = HarborColors.TextDim) }
+            },
         )
     }
 
@@ -198,6 +239,7 @@ fun DetailScreen(
                 Toast.makeText(context, downloadingToast, Toast.LENGTH_SHORT).show()
             },
             onDismiss = vm::closeStreams,
+            onCancelAuto = vm::cancelAuto,
             onPick = { saved ->
                 vm.playbackRequest(ui.target, saved)?.let {
                     vm.closeStreams()
@@ -378,10 +420,26 @@ private fun Overview(details: Details) {
 }
 
 @Composable
-private fun SeasonTabs(details: Details, selected: Int?, onSelect: (Int) -> Unit, seasonWatched: Boolean?, onToggleSeason: () -> Unit) {
+private fun SeasonTabs(
+    details: Details,
+    selected: Int?,
+    onSelect: (Int) -> Unit,
+    seasonWatched: Boolean?,
+    onToggleSeason: () -> Unit,
+    downloadBusy: Boolean,
+    onDownloadSeason: (() -> Unit)?,
+) {
     Column(Modifier.padding(top = 26.dp, bottom = 6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             SectionTitle(stringResource(R.string.common_episodes), Modifier.weight(1f))
+            if (downloadBusy) {
+                CircularProgressIndicator(Modifier.padding(end = 8.dp).size(18.dp), strokeWidth = 2.dp)
+            } else if (onDownloadSeason != null) {
+                Icon(
+                    HIcons.Download, stringResource(R.string.detail_download_season), tint = HarborColors.TextDim,
+                    modifier = Modifier.size(36.dp).clip(CircleShape).clickable(onClick = onDownloadSeason).padding(8.dp),
+                )
+            }
             if (seasonWatched != null) {
                 Row(
                     Modifier.padding(end = 12.dp).clip(RoundedCornerShape(16.dp)).clickable(onClick = onToggleSeason)
@@ -510,13 +568,91 @@ private fun downloadLabel(item: DownloadItem): String = when (item.status) {
 }
 
 @Composable
-private fun CastRow(details: Details) {
+private fun WhereToWatch(providers: WatchProviders) {
+    val uriHandler = LocalUriHandler.current
+    val open = { providers.link?.let { runCatching { uriHandler.openUri(it) } } }
+    Column(Modifier.padding(top = 22.dp)) {
+        SectionTitle(stringResource(R.string.detail_where_to_watch))
+        Spacer(Modifier.height(4.dp))
+        listOf(
+            R.string.providers_stream to providers.stream,
+            R.string.providers_free to providers.free,
+            R.string.providers_rent to providers.rent,
+            R.string.providers_buy to providers.buy,
+        ).filter { it.second.isNotEmpty() }.forEach { (label, list) ->
+            Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(label),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = HarborColors.TextDim,
+                    modifier = Modifier.padding(start = 16.dp).width(92.dp),
+                )
+                LazyRow(contentPadding = PaddingValues(end = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(list, key = { it.id }) { provider ->
+                        AsyncImage(
+                            model = Img.logo(provider.logoPath, "w92"),
+                            contentDescription = provider.name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(HarborColors.SurfaceHigh)
+                                .clickable { open() },
+                        )
+                    }
+                }
+            }
+        }
+        Text(
+            stringResource(R.string.providers_source),
+            style = MaterialTheme.typography.labelSmall,
+            color = HarborColors.TextFaint,
+            modifier = Modifier.padding(start = 16.dp, top = 10.dp),
+        )
+    }
+}
+
+@Composable
+private fun SagaRow(saga: Saga, currentId: Int, onOpen: (MediaItem) -> Unit) {
+    Column(Modifier.padding(top = 26.dp)) {
+        SectionTitle(saga.name)
+        Spacer(Modifier.height(10.dp))
+        val listState = rememberLazyListState()
+        // The movie on screen in view, so a long saga opens where it is.
+        LaunchedEffect(saga) {
+            val index = saga.parts.indexOfFirst { it.id == currentId }
+            if (index > 1) listState.scrollToItem(index - 1)
+        }
+        LazyRow(state = listState, contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(saga.parts, key = { it.id }) { part ->
+                val current = part.id == currentId
+                Column(Modifier.width(112.dp)) {
+                    PosterCard(
+                        part,
+                        onClick = { if (!current) onOpen(part) },
+                        modifier = if (current) Modifier.border(2.dp, HarborColors.Accent, PosterShape) else Modifier,
+                    )
+                    Text(
+                        if (current) stringResource(R.string.detail_saga_here) else part.year.orEmpty(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (current) HarborColors.Accent else HarborColors.TextFaint,
+                        maxLines = 1,
+                        modifier = Modifier.padding(top = 4.dp, start = 2.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CastRow(details: Details, onPerson: (CastMember) -> Unit) {
     Column(Modifier.padding(top = 26.dp)) {
         SectionTitle(stringResource(R.string.detail_cast))
         Spacer(Modifier.height(12.dp))
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             items(details.cast, key = { it.id }) { person ->
-                Column(Modifier.width(76.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    Modifier.width(76.dp).clip(RoundedCornerShape(12.dp)).clickable { onPerson(person) },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
                     Box(Modifier.size(68.dp).clip(CircleShape).background(HarborColors.SurfaceHigh), contentAlignment = Alignment.Center) {
                         if (person.profilePath != null) {
                             AsyncImage(Img.profile(person.profilePath), person.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
