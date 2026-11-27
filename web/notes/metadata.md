@@ -1,11 +1,11 @@
 ---
 title: Browsing, title pages and metadata
 status: stable
-updated: 2026-11-26
+updated: 2026-11-27
 ---
 
 Pictures: `home.jpg`, `home-rows.jpg`, `title-series.jpg`, `title-episodes.jpg`, `title-cast.jpg`, `search.jpg`,
-`my-list.jpg`.
+`my-list.jpg`, `person.jpg`, `saga.jpg`.
 
 ## Where the data comes from
 
@@ -39,6 +39,29 @@ Pictures: `home.jpg`, `home-rows.jpg`, `title-series.jpg`, `title-episodes.jpg`,
 - **Cast** with their characters, and **More like this**.
 - **Opens instantly:** a title page appears as soon as a poster is tapped, with what the poster already knew, and
   the rest fills in as it arrives.
+
+## People
+
+Tapping anyone in the cast opens their page: photo, what they are known for (a row) and their whole filmography,
+newest first. With a TMDB key it comes from TMDB in one request, with the biography, birth date and place, and
+directors' films as well as acting roles. Without a key, the addon's search gives a first list with posters right
+away (it stops at 40 titles per type) and Wikidata adds the full filmography and what the person is best known for
+(by how many Wikipedia articles each title has); titles only Wikidata knew get their poster as they scroll into view.
+The person is found through the cast of the title they were opened from, so two people with the same name aren't
+mixed up. Talk shows, news, reality and documentaries about them are left out: those are appearances, not roles.
+
+## Sagas
+
+A movie that belongs to a saga shows all its parts in release order on its page, with the one on screen marked
+("You are here"). With a TMDB key the saga is TMDB's collection; without one it comes from Wikidata's "part of the
+series", the smallest series the movie is in (a trilogy rather than a whole franchise), up to `saga_max_parts`
+movies.
+
+## Where to watch
+
+With a TMDB key, a title page lists the services that have it in the user's region, by subscription, free, rent and
+buy, with their logos; tapping one opens TMDB's page with the links. The data is JustWatch's, through TMDB, and the
+page says so. Without a key the section doesn't appear: that data only comes from TMDB's API.
 
 ## Search
 

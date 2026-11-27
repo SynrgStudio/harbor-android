@@ -1,20 +1,20 @@
 ---
 title: Languages
 status: stable
-updated: 2026-11-26
+updated: 2026-11-27
 ---
 
-Pictures: `spanish-home.jpg`, `spanish-continue.jpg`.
+Pictures: `spanish-home.jpg`, `spanish-continue.jpg`, `portuguese-home.jpg`.
 
 ## What the user sees
 
-- The interface is in **English and Spanish** (`ui_strings` strings in each), including plurals, dates and numbers
-  written the way each language writes them ("S1 · E2" in English, "T1 · E2" in Spanish; "Friday, Dec 4" /
-  "viernes, 4 dic").
+- The interface is in **English, Spanish and Brazilian Portuguese** (`ui_strings` strings in each), including
+  plurals, dates and numbers written the way each language writes them ("S1 · E2" in English, "T1 · E2" in Spanish;
+  "Friday, Dec 4" / "viernes, 4 dic").
 - It follows the phone's language. On Android 13 or later it can be set for Harbor alone, in the system settings
   (Apps → Harbor → Language), and the app switches without restarting.
 - **Metadata** (titles, synopses, episode names, logos) has its own language setting: Spanish for Latin America,
-  Spanish for Spain, or English. On a new install it follows the phone, as do the region (used for age ratings and
+  Spanish for Spain, Portuguese, or English. On a new install it follows the phone, as do the region (used for age ratings and
   release info) and the default subtitle language. Existing users keep what they had chosen.
 - Genre rows on Home ask the metadata addon with the genre names in the metadata language, since the addon filters
   by name.

@@ -32,11 +32,17 @@ These rules come before everything else in this corpus.
 
 6. **Credits that must appear with the pictures.**
    - Pictures with Tears of Steel (`player*.jpg`, `streams.jpg`, `pip.jpg`, `continue.jpg`, `downloads.jpg`,
-     `spanish-continue.jpg`): "Tears of Steel (CC BY 3.0) Blender Foundation | mango.blender.org".
+     `spanish-continue.jpg`, `cast-*.jpg`, `widget.jpg`, `stats.jpg`, `portuguese-home.jpg`): "Tears of Steel
+     (CC BY 3.0) Blender Foundation | mango.blender.org".
+   - Pictures with Sintel (`widget.jpg`, `portuguese-home.jpg`): "Sintel (CC BY 3.0) Blender Foundation |
+     durian.blender.org".
    - Posters, artwork and metadata come from TMDB: the page carries "This product uses the TMDB API but is not
      endorsed or certified by TMDB."
    - "Open Movies", the addon in the pictures, was made only to take them; it is not part of Harbor and must not be
-     presented as one of its features or as an addon to install.
+     presented as one of its features or as an addon to install. The same goes for the TV in the "Play on a TV"
+     pictures: a pretend DLNA TV on a PC (`scripts/fake-tv.py`), named like a real one.
+   - "Where to watch" data is JustWatch's, through TMDB: wherever the page shows or describes it, it says so (the
+     app's own screen already does).
    *Why: licenses and honesty about the pictures.*
 
 7. **Only what a release has.** The corpus describes 0.7.0. Nothing that isn't in a published release is announced

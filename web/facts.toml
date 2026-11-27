@@ -5,8 +5,8 @@
 [project]
 name = "Harbor for Android"
 short_name = "Harbor"
-version = "0.7.0"
-released = 2026-11-26
+version = "0.8.0"
+released = 2026-11-27
 license = "GPL-3.0-or-later"
 platforms = ["Android 10 or later"]
 abis = ["arm64-v8a (phones)", "x86_64 (emulators and Chromebooks)"]
@@ -39,74 +39,139 @@ icon = "icon.svg"
 # ---------------------------------------------------------------- the release
 
 [facts.apk_mb]
-value = 19.1
+value = 20.6
 unit = "MB"
-what = "size of the arm64-v8a APK of 0.7.0 as published (19,053,753 bytes), in decimal MB; it includes the torrent engine and the FFmpeg audio decoder"
-source = "GitHub release v0.7.0, asset Harbor-0.7.0-arm64-v8a.apk (SHA-256 ba262135c014b4f08737dc4f15dcea4e649ebe84d891761d1b2d264bab29d85d)"
-date = 2026-11-26
+what = "size of the arm64-v8a APK of 0.8.0 as published (20,580,398 bytes), in decimal MB; it includes the torrent engine, the FFmpeg audio decoder and Google's Cast library"
+source = "GitHub release v0.8.0, asset Harbor-0.8.0-arm64-v8a.apk (SHA-256 6e2a38b947319da919c0de1236f5b84a9657bca3a1a2fe91a7083667f489caad)"
+date = 2026-11-27
 
 [facts.apk_x86_64_mb]
-value = 20.8
+value = 22.4
 unit = "MB"
-what = "size of the x86_64 APK of 0.7.0 as published (20,849,048 bytes), in decimal MB"
-source = "GitHub release v0.7.0, asset Harbor-0.7.0-x86_64.apk (SHA-256 8841083b9c1d2f2bbc44cec321e1fcd2c322c793e64cb22106526436d9f6952f)"
-date = 2026-11-26
+what = "size of the x86_64 APK of 0.8.0 as published (22,375,693 bytes), in decimal MB"
+source = "GitHub release v0.8.0, asset Harbor-0.8.0-x86_64.apk (SHA-256 227d2686d5ed22a38670fef85c8a41d52c99e810a283489ceb4d1d3564e7498b)"
+date = 2026-11-27
 
 [facts.min_android]
 value = 10
 unit = "Android version"
 what = "oldest Android it installs on (minSdk 29)"
-source = "app/build.gradle.kts at v0.7.0"
-date = 2026-11-26
+source = "app/build.gradle.kts at v0.8.0"
+date = 2026-11-27
 
 [facts.languages]
-value = 2
+value = 3
 unit = "languages"
-what = "languages the interface ships in: English and Spanish"
-source = "app/build.gradle.kts (localeFilters) and res/xml/locales_config.xml at v0.7.0"
-date = 2026-11-26
+what = "languages the interface ships in: English, Spanish and Brazilian Portuguese"
+source = "app/build.gradle.kts (localeFilters) and res/xml/locales_config.xml at v0.8.0"
+date = 2026-11-27
 
 [facts.ui_strings]
-value = 326
+value = 429
 unit = "strings"
-what = "interface texts translated into each language (plus the app name, which is the same in both)"
-source = "res/values/strings_*.xml and res/values-es/strings_*.xml at v0.7.0, counted"
-date = 2026-11-26
+what = "interface texts translated into each language (plus the app name, which is the same in all)"
+source = "res/values/strings_*.xml, res/values-es/ and res/values-pt/ at v0.8.0, counted"
+date = 2026-11-27
 
 [facts.kotlin_lines]
-value = 8618
+value = 11807
 unit = "lines"
 what = "lines of Kotlin in the app, without blank lines or comments"
-source = "app/src/main/java at v0.7.0, counted"
-date = 2026-11-26
+source = "app/src/main/java at v0.8.0, counted"
+date = 2026-11-27
 
 [facts.kotlin_files]
-value = 50
+value = 67
 unit = "files"
 what = "Kotlin source files in the app"
-source = "app/src/main/java at v0.7.0, counted"
-date = 2026-11-26
+source = "app/src/main/java at v0.8.0, counted"
+date = 2026-11-27
 
 [facts.rust_glue_lines]
 value = 100
 unit = "lines"
 what = "lines of Rust between Kotlin and librqbit (start the engine, report errors), without blank lines or comments; everything else goes through librqbit's own HTTP API"
-source = "native/src at v0.7.0, counted"
-date = 2026-11-26
+source = "native/src at v0.8.0, counted"
+date = 2026-11-27
 
 [facts.bundled_stream_addons]
 value = 0
 unit = "addons"
 what = "stream addons that come with the app; the only addon it adds by itself is OpenSubtitles v3, for subtitles"
-source = "stremio/AddonRepository.kt (seedDefaultsIfNeeded) at v0.7.0"
-date = 2026-11-26
+source = "stremio/AddonRepository.kt (seedDefaultsIfNeeded) at v0.8.0"
+date = 2026-11-27
 
 [facts.api_keys_in_apk]
 value = 0
 unit = "keys"
 what = "API keys shipped inside the APK; TMDB works through its keyless addon, and a personal key is optional"
-source = "tmdb/TmdbAddon.kt and data/Settings.kt at v0.7.0"
-date = 2026-11-26
+source = "tmdb/TmdbAddon.kt, tmdb/Wikidata.kt and data/Settings.kt at v0.8.0"
+date = 2026-11-27
+
+[facts.unit_tests]
+value = 19
+unit = "tests"
+what = "JVM unit tests: Stremio's watched-marks format, the subtitle reader, intro learning, and playing on a TV (the phone's server and a DLNA conversation with a pretend TV)"
+source = "app/src/test at v0.8.0, counted"
+date = 2026-11-27
+
+# ---------------------------------------------------------------- behavior added in 0.8.0 (from the source)
+
+[facts.saga_max_parts]
+value = 40
+unit = "movies"
+what = "largest Wikidata film series shown as a saga without a TMDB key; a shared universe with more films is left out"
+source = "tmdb/Wikidata.kt (MAX_PARTS) at v0.8.0"
+date = 2026-11-27
+
+[facts.volume_boost_max_pct]
+value = 200
+unit = "%"
+what = "highest volume boost in the player, past the phone's maximum (150% or 200%), with a limiter so it doesn't distort"
+source = "player/TracksSheet.kt and player/SoundEffects.kt at v0.8.0"
+date = 2026-11-27
+
+[facts.intro_jump_min_s]
+value = 20
+unit = "s"
+what = "shortest jump forward that counts as skipping a series' intro"
+source = "player/IntroSkip.kt (MIN_JUMP_MS) at v0.8.0"
+date = 2026-11-27
+
+[facts.intro_jump_max_s]
+value = 180
+unit = "s"
+what = "longest jump forward that counts as skipping a series' intro"
+source = "player/IntroSkip.kt (MAX_JUMP_MS) at v0.8.0"
+date = 2026-11-27
+
+[facts.intro_learn_window_min]
+value = 10
+unit = "minutes"
+what = "the jump has to start within this many minutes of an episode to count as skipping the intro"
+source = "player/IntroSkip.kt (MAX_START_MS) at v0.8.0"
+date = 2026-11-27
+
+[facts.auto_pick_wait_s]
+value = 5
+unit = "s"
+what = "with a good stream already found, how long \"Play the best stream right away\" waits for the other addons"
+source = "ui/detail/DetailViewModel.kt (AUTO_SOON_MS) at v0.8.0"
+date = 2026-11-27
+
+[facts.auto_pick_max_s]
+value = 12
+unit = "s"
+what = "the longest \"Play the best stream right away\" waits before playing the best stream found so far"
+source = "ui/detail/DetailViewModel.kt (AUTO_LATEST_MS) at v0.8.0"
+date = 2026-11-27
+
+[facts.widget_titles]
+value = 3
+unit = "titles"
+what = "titles from Continue watching on the home screen widget"
+source = "widget/ContinueWidget.kt at v0.8.0"
+date = 2026-11-27
 
 # ---------------------------------------------------------------- behavior (from the source, not measured)
 
@@ -382,3 +447,51 @@ what = "the Continue tab with the interface in Spanish"
 [media.spanish_home]
 file = "spanish-home.jpg"
 what = "Home with the interface in Spanish"
+
+[media.person]
+file = "person.jpg"
+what = "an actor's page: what he is known for and his filmography, newest first (without a TMDB key: the addon's search and Wikidata)"
+
+[media.saga]
+file = "saga.jpg"
+what = "a title page with its saga in release order (\"You are here\") above the cast"
+
+[media.settings_subtitle_style]
+file = "settings-subtitle-style.jpg"
+what = "Settings: subtitle style (color, edge, font, height) with its live preview"
+
+[media.settings_automatic]
+file = "settings-automatic.jpg"
+what = "Settings: \"Play the best stream right away\" with its limits, smart downloads and where downloads go (phone or SD card)"
+
+[media.settings_backup]
+file = "settings-backup.jpg"
+what = "Settings: Backup (export and import), with the metadata language including Portuguese"
+
+[media.player_second_subtitle]
+file = "player-second-subtitle.jpg"
+what = "the player with two subtitles at once: Spanish below in a yellow, shadowed style, English above"
+
+[media.player_sound]
+file = "player-sound.jpg"
+what = "the player's Audio tab: night mode on, clearer dialogue, volume boost at 150%"
+
+[media.cast_picker]
+file = "cast-picker.jpg"
+what = "Play on a TV: the list of TVs on the Wi-Fi (a pretend DLNA TV, see rules.md)"
+
+[media.cast_remote]
+file = "cast-remote.jpg"
+what = "playing on a TV: the phone as the remote, with the TV's position and length"
+
+[media.stats]
+file = "stats.jpg"
+what = "Your stats: time watched, finished titles, by month and most watched (a fresh install: a few minutes)"
+
+[media.widget]
+file = "widget.jpg"
+what = "the Continue watching widget on the home screen"
+
+[media.portuguese_home]
+file = "portuguese-home.jpg"
+what = "Home with the interface and the metadata in Brazilian Portuguese"

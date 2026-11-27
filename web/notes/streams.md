@@ -1,10 +1,10 @@
 ---
 title: Streams, addons and torrents
 status: stable
-updated: 2026-11-26
+updated: 2026-11-27
 ---
 
-Picture: `streams.jpg`.
+Pictures: `streams.jpg`, `settings-automatic.jpg` (the limits for automatic choices).
 
 ## Where streams come from
 
@@ -31,6 +31,20 @@ Addons describe streams in free text. The app reads it into:
 
 Order within each addon: already cached on a debrid service first, CAM recordings last, then by quality, then by
 seeds. Chips filter by quality (All, 4K, 1080p, 720p, Other).
+
+## Play the best stream right away
+
+An option in Settings → Playback. "Watch now" (and tapping an episode) then skips the list and plays the best
+stream within the user's limits: highest quality (4K, 1080p or 720p) and largest file (any, 2, 5 or 10 GB). It never
+takes a CAM recording, an external link or a torrent the engine can't play; it keeps the same release as the episode
+before (Stremio's `bingeGroup`); and then prefers cached on a debrid service, the higher quality, enough seeds, and
+the smaller file. Ties keep the addons' order.
+
+- It waits for every addon, or `auto_pick_wait_s` s once it has a good stream, and never more than `auto_pick_max_s`
+  s. Meanwhile the list is on screen with "Choosing the best stream…" and a **Let me choose** button.
+- Nothing within the limits: the list stays, as without the option.
+- A downloaded episode plays from the phone instead.
+- Season downloads and smart downloads choose with the same rules.
 
 ## Continue with the same stream
 

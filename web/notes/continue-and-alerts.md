@@ -1,10 +1,10 @@
 ---
 title: Continue, new episodes, notifications and shortcuts
 status: stable
-updated: 2026-11-26
+updated: 2026-11-27
 ---
 
-Pictures: `continue.jpg`, `continue-coming-soon.jpg`, `spanish-continue.jpg`.
+Pictures: `continue.jpg`, `continue-coming-soon.jpg`, `spanish-continue.jpg`, `widget.jpg`.
 
 ## The Continue tab
 
@@ -41,6 +41,13 @@ language. The list refreshes when the tab is opened and it's more than 3 hours o
 
 Long-pressing the Harbor icon lists up to `launcher_shortcuts` titles from Continue watching; each one resumes
 playback directly. They update by themselves when what is in progress changes.
+
+## Home screen widget
+
+"Continue watching" as a widget (4 × 2, resizable): up to `widget_titles` titles with their picture, the episode,
+the time left and a progress bar. Tapping one plays it straight away, like the shortcuts; tapping the header opens
+the app. It is plain Android widget code, with no widget library in the APK, and it refreshes when what is in
+progress changes.
 
 ## Opening the right screen
 

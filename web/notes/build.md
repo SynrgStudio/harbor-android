@@ -1,7 +1,7 @@
 ---
 title: Stack and build
 status: stable
-updated: 2026-11-26
+updated: 2026-11-27
 ---
 
 ## Stack
@@ -16,7 +16,9 @@ updated: 2026-11-26
 | Images | Coil 3, with a 400 MB disk cache |
 | Blur | Haze (the translucent tab bar) |
 | Storage | small JSON files (`core/JsonStore.kt`), no database |
-| Background | a foreground service for downloads; JobScheduler for the new-episode check |
+| Background | foreground services for downloads and for playing on a TV; JobScheduler for the new-episode check |
+| TV | Google Cast library 22.1 (Chromecast); DLNA written in the app (SSDP + UPnP AVTransport); a small HTTP server on the phone's Wi-Fi address |
+| Widget | plain RemoteViews |
 | Startup | Baseline Profile generated with Macrobenchmark + UI Automator, shipped in the APK |
 | Target | Android 10 (API 29) to Android 16 (API 36) |
 
@@ -36,5 +38,10 @@ Scripts in `scripts/` (PowerShell on Windows), documented in `docs/DEVELOPMENT.m
 
 ## Tests
 
-JVM unit tests check Stremio's watched-marks format against stremio-core's own examples (`stremio.md`). The
-Baseline Profile run exercises the release build on every regeneration.
+JVM unit tests (`unit_tests`) check Stremio's watched-marks format against stremio-core's own examples
+(`stremio.md`), the subtitle reader (SRT, WebVTT, ASS, old encodings), the intro learning, and playing on a TV: the
+phone's server answering byte ranges and proxying, and a whole DLNA conversation with a pretend TV. The Baseline
+Profile run exercises the release build on every regeneration.
+
+For trying TV playback and series features without real ones, `scripts/fake-tv.py` is a pretend DLNA TV on the PC
+and `scripts/demo-addon.py --series` answers any episode of a series with an open movie.

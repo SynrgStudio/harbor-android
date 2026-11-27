@@ -1,7 +1,7 @@
 ---
 title: Why it is built the way it is
 status: stable
-updated: 2026-11-26
+updated: 2026-11-27
 ---
 
 The choices that shaped the app, each with the reason. Numbers referenced here are facts in `facts.toml`.
@@ -101,8 +101,48 @@ install time; Home shows the last saved rows instantly and refreshes behind; a t
 known about it and fills in the rest; the blurred tab bar is rendered at half resolution. Performance is only
 measured on release builds on a phone (`performance.md`).
 
-## Two languages, done properly
+## Three languages, done properly
 
-Every interface string is a resource in English and Spanish (`ui_strings` each). The app follows the phone's
+Every interface string is a resource in English, Spanish and Brazilian Portuguese (`ui_strings` each). The app follows the phone's
 language, and on Android 13 or later it can be set per app in the system settings. First-run defaults (metadata
 language, region, subtitles) also follow the phone.
+
+## People and sagas without a key: Wikidata
+
+Without a TMDB key, a person's full filmography and a movie's saga come from Wikidata, the open knowledge base behind
+Wikipedia, which links titles to their TMDB ids. No key, no account, nothing in the APK.
+
+- **Why:** the keyless TMDB addon has no person or collection data, and its search stops at 40 titles. Wikidata
+  fills the gaps for everyone, not only for those who set up a key.
+
+## Two ways to the TV
+
+Chromecast through Google's Cast library, and DLNA (the open standard most smart TVs speak) written in the app.
+Torrents and downloads reach the TV through a small server on the phone; direct links go straight to a Chromecast.
+
+- **Why:** Chromecast is the most common TV stick, and only Google's library talks to it. DLNA covers the TVs
+  without one and needs nothing from Google. Google's library is only started when the TV list is opened, so it
+  doesn't run for people who never use it.
+
+## Skip intro learned from the user
+
+The app doesn't look up intros anywhere: the first time the user skips one by hand, it learns the length, and the
+next episodes offer to skip it.
+
+- **Why:** intro databases cover few shows and need a service to ask; detecting intros by audio would mean analysing
+  every episode on the phone. Watching what the user already does costs nothing and works for any series.
+
+## One set of rules for every automatic choice
+
+"Play the best stream right away", season downloads and smart downloads all choose a stream with the same rules and
+the same two limits the user sets (highest quality, largest file).
+
+- **Why:** one place to understand and adjust. Whatever the app picks by itself, it picks the same way.
+
+## The second subtitle is drawn by the app
+
+Media3 shows one text track at a time, so the second subtitle is read by the app (SRT, WebVTT or ASS) and drawn over
+the picture in the same style as the first.
+
+- **Why:** dual subtitles are the most asked-for way to learn a language with films, and the player can't do it by
+  itself.
