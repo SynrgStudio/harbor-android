@@ -47,11 +47,9 @@ class CastOptionsProvider : OptionsProvider {
  * only started the first time the user opens "Play on a TV"; on phones without Play services
  * [create] returns null and only DLNA TVs are listed.
  */
-class GoogleCast private constructor(private val cast: CastContext, private val router: MediaRouter) {
-    class Route(val id: String, val name: String)
-
-    private val _routes = MutableStateFlow<List<Route>>(emptyList())
-    val routes: StateFlow<List<Route>> = _routes
+class GoogleCast private constructor(private val cast: CastContext, private val router: MediaRouter) : Chromecasts {
+    private val _routes = MutableStateFlow<List<Chromecasts.Route>>(emptyList())
+    override val routes: StateFlow<List<Chromecasts.Route>> = _routes
 
     private val selector = MediaRouteSelector.Builder()
         .addControlCategory(CastMediaControlIntent.categoryForCast(CastMediaControlIntent.DEFAULT_MEDIA_RECEIVER_APPLICATION_ID))
@@ -64,18 +62,18 @@ class GoogleCast private constructor(private val cast: CastContext, private val 
     }
 
     private fun refresh() {
-        _routes.value = router.routes.filter { !it.isDefault && it.isEnabled && it.matchesSelector(selector) }.map { Route(it.id, it.name) }
+        _routes.value = router.routes.filter { !it.isDefault && it.isEnabled && it.matchesSelector(selector) }.map { Chromecasts.Route(it.id, it.name) }
     }
 
-    suspend fun startDiscovery() = withContext(Dispatchers.Main) {
+    override suspend fun startDiscovery() = withContext(Dispatchers.Main) {
         router.addCallback(selector, callback, MediaRouter.CALLBACK_FLAG_REQUEST_DISCOVERY)
         refresh()
     }
 
-    suspend fun stopDiscovery() = withContext(Dispatchers.Main) { router.removeCallback(callback) }
+    override suspend fun stopDiscovery() = withContext(Dispatchers.Main) { router.removeCallback(callback) }
 
     /** Connects to the Chromecast and waits for the session (Cast starts the receiver app on the TV). */
-    suspend fun connect(routeId: String): Unit = withContext(Dispatchers.Main) {
+    override suspend fun connect(routeId: String): Unit = withContext(Dispatchers.Main) {
         val route = router.routes.firstOrNull { it.id == routeId } ?: throw IOException("gone")
         val manager = cast.sessionManager
         manager.currentCastSession?.takeIf { it.isConnected }?.let { return@withContext }
@@ -108,7 +106,7 @@ class GoogleCast private constructor(private val cast: CastContext, private val 
 
     private val client: RemoteMediaClient? get() = cast.sessionManager.currentCastSession?.remoteMediaClient
 
-    suspend fun load(url: String, mime: String, title: String, subtitle: String?, image: String?, startMs: Long, vttUrl: String?, vttLanguage: String?) =
+    override suspend fun load(url: String, mime: String, title: String, subtitle: String?, image: String?, startMs: Long, vttUrl: String?, vttLanguage: String?) {
         withContext(Dispatchers.Main) {
             val metadata = MediaMetadata(MediaMetadata.MEDIA_TYPE_MOVIE).apply {
                 putString(MediaMetadata.KEY_TITLE, title)
@@ -141,24 +139,30 @@ class GoogleCast private constructor(private val cast: CastContext, private val 
                 .build()
             (client ?: throw IOException("no session")).load(request)
         }
-
-    /** Position, duration, playing and loading, as the Chromecast last reported them. */
-    suspend fun status(): Status? = withContext(Dispatchers.Main) {
-        val c = client ?: return@withContext null
-        Status(c.approximateStreamPosition, c.streamDuration, c.isPlaying, c.isBuffering || c.isLoadingNextItem, c.mediaStatus?.idleReason == com.google.android.gms.cast.MediaStatus.IDLE_REASON_ERROR)
     }
 
-    class Status(val positionMs: Long, val durationMs: Long, val playing: Boolean, val loading: Boolean, val failed: Boolean)
+    override suspend fun status(): Chromecasts.Status? = withContext(Dispatchers.Main) {
+        val c = client ?: return@withContext null
+        Chromecasts.Status(c.approximateStreamPosition, c.streamDuration, c.isPlaying, c.isBuffering || c.isLoadingNextItem, c.mediaStatus?.idleReason == com.google.android.gms.cast.MediaStatus.IDLE_REASON_ERROR)
+    }
 
-    suspend fun play() = withContext(Dispatchers.Main) { client?.play() }
+    override suspend fun play() {
+        withContext(Dispatchers.Main) { client?.play() }
+    }
 
-    suspend fun pause() = withContext(Dispatchers.Main) { client?.pause() }
+    override suspend fun pause() {
+        withContext(Dispatchers.Main) { client?.pause() }
+    }
 
-    suspend fun seek(ms: Long) = withContext(Dispatchers.Main) { client?.seek(MediaSeekOptions.Builder().setPosition(ms).build()) }
+    override suspend fun seek(ms: Long) {
+        withContext(Dispatchers.Main) { client?.seek(MediaSeekOptions.Builder().setPosition(ms).build()) }
+    }
 
-    suspend fun end() = withContext(Dispatchers.Main) {
-        runCatching { client?.stop() }
-        cast.sessionManager.endCurrentSession(true)
+    override suspend fun end() {
+        withContext(Dispatchers.Main) {
+            runCatching { client?.stop() }
+            cast.sessionManager.endCurrentSession(true)
+        }
     }
 
     companion object {

@@ -145,9 +145,11 @@ private fun DownloadRow(
         }
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
             Text(item.title, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (item.season != null && item.episode != null) {
+            val seasonNo = item.season
+            val episodeNo = item.episode
+            if (seasonNo != null && episodeNo != null) {
                 Text(
-                    stringResource(R.string.downloads_episode_label, item.season, item.episode) + (item.episodeTitle?.let { " — $it" } ?: ""),
+                    stringResource(R.string.downloads_episode_label, seasonNo, episodeNo) + (item.episodeTitle?.let { " — $it" } ?: ""),
                     style = MaterialTheme.typography.bodySmall,
                     color = HarborColors.TextDim,
                     maxLines = 1,

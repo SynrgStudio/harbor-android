@@ -1,14 +1,10 @@
 package com.synrg.harbor.downloads
 
-import android.app.Application
-import android.content.Intent
-import android.os.Environment
 import androidx.compose.runtime.Immutable
-import androidx.core.content.ContextCompat
-import com.synrg.harbor.R
+import com.synrg.harbor.core.CoreStrings
+import com.synrg.harbor.core.CoreText
 import com.synrg.harbor.core.JsonStore
 import com.synrg.harbor.core.NetworkMonitor
-import com.synrg.harbor.core.Strings
 import com.synrg.harbor.core.await
 import com.synrg.harbor.data.MediaType
 import com.synrg.harbor.data.ProgressEntry
@@ -80,7 +76,7 @@ data class DownloadItem(
     fun playback(resumeMs: Long = 0) = PlaybackRequest(
         type = type, tmdbId = tmdbId, imdbId = imdbId, season = season, episode = episode,
         title = title, episodeTitle = episodeTitle, poster = poster, backdrop = backdrop, still = still,
-        stream = SavedStream(url = "file://" + file, filename = file?.substringAfterLast('/'), addonName = Strings.get(R.string.downloads_downloaded), label = stream.label),
+        stream = SavedStream(url = "file://" + file, filename = file?.substringAfterLast('/'), addonName = CoreStrings.get(CoreText.DownloadsDownloaded), label = stream.label),
         startPositionMs = resumeMs,
     )
 }
@@ -89,15 +85,28 @@ data class DownloadItem(
 data class DownloadData(val items: List<DownloadItem> = emptyList())
 
 /** Live numbers for the screen and the notification, not worth saving. */
+@Immutable
 data class DownloadSpeed(val bps: Long = 0, val peers: Int? = null)
+
+/** What downloads need from the platform. */
+interface DownloadHost {
+    /** The app's own folder for downloads on the device. */
+    val internalDir: File
+
+    /** The app's folder on a removable card, when one is mounted; null without one. */
+    fun removableDir(): File?
+
+    /** Makes sure [Downloads.runQueue] is running (on Android, in a foreground service). */
+    fun startQueue()
+}
 
 /**
  * Saves movies and episodes to watch without internet. Torrents download with librqbit into its
  * cache and, once complete, the file moves to app storage; direct links download with OkHttp,
- * resuming where they stopped. [DownloadService] runs [runQueue] in the foreground.
+ * resuming where they stopped. The platform runs [runQueue] ([DownloadHost.startQueue]).
  */
 class Downloads(
-    private val app: Application,
+    private val host: DownloadHost,
     private val store: JsonStore<DownloadData>,
     private val torrents: TorrentEngine,
     private val http: OkHttpClient,
@@ -115,18 +124,13 @@ class Downloads(
     /** Where new downloads go: the SD card when chosen (and still there), else the phone. */
     val dir: File
         get() = (if (settings.current.downloadStorage == "sd") sdDir() else null)
-            ?: File(app.filesDir, "downloads").apply { mkdirs() }
+            ?: host.internalDir.apply { mkdirs() }
 
     /**
-     * The app's own folder on a removable card, when one is mounted. No permission needed; Android
-     * deletes it with the app. Torrents finish in the engine's cache on the phone and are copied
-     * there (a rename only works within one storage).
+     * The app's own folder on a removable card, when one is mounted. Torrents finish in the
+     * engine's cache and are copied there (a rename only works within one storage).
      */
-    fun sdDir(): File? = app.getExternalFilesDirs(null).drop(1).firstOrNull { folder ->
-        folder != null && runCatching {
-            Environment.isExternalStorageRemovable(folder) && Environment.getExternalStorageState(folder) == Environment.MEDIA_MOUNTED
-        }.getOrDefault(false)
-    }?.let { File(it, "downloads").apply { mkdirs() } }
+    fun sdDir(): File? = host.removableDir()
 
     /** Finished since the service last asked (for its "ready to watch" notification). */
     private val finished = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
@@ -169,9 +173,7 @@ class Downloads(
         if (store.value.items.any { it.active }) startService()
     }
 
-    private fun startService() {
-        ContextCompat.startForegroundService(app, Intent(app, DownloadService::class.java))
-    }
+    private fun startService() = host.startQueue()
 
     private fun setStatus(id: String, status: DownloadStatus, error: String? = null) =
         store.update { d -> d.copy(items = d.items.map { if (it.id == id) it.copy(status = status, error = error) else it }) }
@@ -225,7 +227,7 @@ class Downloads(
 
     private fun safeName(item: DownloadItem) = item.id.replace(':', '_')
 
-    // --- The queue (runs inside DownloadService) ------------------------------------------------
+    // --- The queue (the platform runs it: DownloadService on Android) --------------------------
 
     /** Downloads one item at a time until nothing is left to do. */
     suspend fun runQueue(onUpdate: () -> Unit) {
@@ -249,7 +251,7 @@ class Downloads(
                 throw e
             } catch (e: Exception) {
                 if (get(next.id)?.status == DownloadStatus.Downloading) {
-                    setStatus(next.id, DownloadStatus.Failed, e.message ?: Strings.get(R.string.downloads_failed))
+                    setStatus(next.id, DownloadStatus.Failed, e.message ?: CoreStrings.get(CoreText.DownloadsFailed))
                 }
             }
             _speed.value = _speed.value - next.id
@@ -310,7 +312,7 @@ class Downloads(
     }
 
     private suspend fun downloadHttp(item: DownloadItem, onUpdate: () -> Unit) {
-        val url = item.stream.url ?: throw IOException(Strings.get(R.string.downloads_no_link))
+        val url = item.stream.url ?: throw IOException(CoreStrings.get(CoreText.DownloadsNoLink))
         val part = partFile(item)
         val ext = (item.stream.filename ?: url.substringBefore('?')).substringAfterLast('.', "").takeIf { it.length in 2..4 } ?: "mkv"
         val target = File(dir, safeName(item) + "." + ext)
@@ -321,7 +323,7 @@ class Downloads(
         }.build()
         val response = http.newCall(request).await()
         response.use { res ->
-            if (!res.isSuccessful) throw IOException(Strings.get(R.string.downloads_stream_responded, res.code))
+            if (!res.isSuccessful) throw IOException(CoreStrings.get(CoreText.DownloadsStreamResponded, res.code))
             val resumed = res.code == 206
             val start = if (resumed) already else 0L
             val total = start + (res.body.contentLength().takeIf { it > 0 } ?: 0L)

@@ -3,7 +3,9 @@ package com.synrg.harbor.core
 import android.app.Application
 import com.synrg.harbor.BuildConfig
 import com.synrg.harbor.cast.CastManager
+import com.synrg.harbor.cast.GoogleCast
 import com.synrg.harbor.data.ProgressData
+import com.synrg.harbor.downloads.AndroidDownloadHost
 import com.synrg.harbor.downloads.AutoDownloads
 import com.synrg.harbor.downloads.DownloadData
 import com.synrg.harbor.downloads.Downloads
@@ -24,6 +26,7 @@ import com.synrg.harbor.tmdb.Metadata
 import com.synrg.harbor.tmdb.TmdbAddon
 import com.synrg.harbor.tmdb.TmdbApi
 import com.synrg.harbor.tmdb.Wikidata
+import com.synrg.harbor.torrent.AndroidTorrentBackend
 import com.synrg.harbor.torrent.TorrentEngine
 import com.synrg.harbor.update.Updater
 import kotlinx.coroutines.CoroutineScope
@@ -72,7 +75,7 @@ class AppGraph(val app: Application) {
     val progress: ProgressRepository by lazy { ProgressRepository(store("progress.json", ProgressData.serializer(), ProgressData())) }
     val watchlist: WatchlistRepository by lazy { WatchlistRepository(store("watchlist.json", WatchlistData.serializer(), WatchlistData())) }
     val watchLog: WatchLogRepository by lazy { WatchLogRepository(store("watchlog.json", WatchLog.serializer(), WatchLog())) }
-    val backup: Backup by lazy { Backup(this) }
+    val backup: Backup by lazy { Backup(json, BuildConfig.VERSION_NAME, settings, progress, watchlist, episodes, watchLog) }
 
     val meta: Metadata by lazy { Metadata(settings, TmdbApi(http, json, settings), TmdbAddon(http, json, settings), Wikidata(http, json, userAgent)) }
     val addons: AddonRepository by lazy { AddonRepository(http, json, settings) }
@@ -82,13 +85,30 @@ class AppGraph(val app: Application) {
     val episodes: EpisodeCalendar by lazy {
         EpisodeCalendar(store("episodes.json", CalendarData.serializer(), CalendarData()), addons, meta, progress, watchlist, sync)
     }
-    val network: NetworkMonitor by lazy { NetworkMonitor(app) }
-    val torrents: TorrentEngine by lazy { TorrentEngine(app, network, scope) }
+    val network: NetworkMonitor by lazy { AndroidNetworkMonitor(app) }
+    val torrents: TorrentEngine by lazy {
+        TorrentEngine(AndroidTorrentBackend, File(app.cacheDir, "torrents"), File(app.filesDir, "torrent-state"), network, scope)
+    }
     val updater: Updater by lazy { Updater(app, http, json, settings, scope) }
     val downloads: Downloads by lazy {
-        Downloads(app, store("downloads.json", DownloadData.serializer(), DownloadData()), torrents, mediaHttp, network, settings, progress, addons)
+        Downloads(AndroidDownloadHost(app), store("downloads.json", DownloadData.serializer(), DownloadData()), torrents, mediaHttp, network, settings, progress, addons)
     }
-    val cast: CastManager by lazy { CastManager(app, mediaHttp, scope) }
+    val cast: CastManager by lazy {
+        CastManager(
+            mediaHttp,
+            scope,
+            openChromecasts = { GoogleCast.create(app) },
+            holdMulticast = {
+                app.getSystemService(android.net.wifi.WifiManager::class.java)?.createMulticastLock("harbor-dlna")?.run {
+                    setReferenceCounted(false)
+                    acquire()
+                    AutoCloseable { release() }
+                }
+            },
+            // Debug builds on the emulator: scripts/fake-tv.py on the PC (SSDP doesn't cross the emulator's network).
+            extraTv = if (BuildConfig.DEBUG) "http://10.0.2.2:7320/desc.xml" else null,
+        )
+    }
     val autoDownloads: AutoDownloads by lazy { AutoDownloads(downloads, addons, meta, settings, torrents, scope) }
 
     /** What a list already knew about a title, so its detail page can paint before the full data arrives. */

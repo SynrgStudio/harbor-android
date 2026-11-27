@@ -124,8 +124,11 @@ class DownloadService : Service() {
         const val NOTIFICATION_ID = 7001
         const val NOTIFICATION_DONE_ID = 7002
 
-        fun label(item: DownloadItem) =
-            item.title + if (item.season != null && item.episode != null) " " + Strings.get(R.string.common_episode_code, item.season, item.episode) else ""
+        fun label(item: DownloadItem): String {
+            val season = item.season
+            val episode = item.episode
+            return item.title + if (season != null && episode != null) " " + Strings.get(R.string.common_episode_code, season, episode) else ""
+        }
     }
 }
 

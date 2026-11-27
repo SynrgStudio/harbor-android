@@ -4,8 +4,8 @@ Native Android app (Kotlin + Jetpack Compose): TMDB metadata, streams from Strem
 
 Two Gradle modules:
 
-- `core/`: plain Kotlin on the JVM, no Android. Stremio (account, addons, sync, "watched" marks, stream rules), metadata (TMDB API and addon, Wikidata), progress, settings, lists and stats, the episode calendar, the subtitle parser, and the DLNA side of "Play on a TV" (`LanServer`, `Dlna`). Sources in `core/src/main/kotlin/com/synrg/harbor/`.
-- `app/`: the Android app on top of it: screens, player, torrents, downloads, notifications, widget, updater, Chromecast. Sources in `app/src/main/java/com/synrg/harbor/`.
+- `core/`: plain Kotlin on the JVM, no Android. Stremio (account, addons, sync, "watched" marks, stream rules), metadata (TMDB API and addon, Wikidata), progress, settings, lists and stats, backups, the episode calendar, the subtitle parser, downloads and automatic downloads, the torrent engine's HTTP side, and "Play on a TV" (`CastManager`, `LanServer`, `Dlna`). Sources in `core/src/main/kotlin/com/synrg/harbor/`.
+- `app/`: the Android app on top of it: screens, player, notifications and services, widget, updater, and the Android pieces the core asks for (`AndroidTorrentBackend` starts librqbit through JNI, `AndroidDownloadHost` with `DownloadService`, `GoogleCast` for Chromecasts, `AndroidNetworkMonitor`). Sources in `app/src/main/java/com/synrg/harbor/`.
 
 Both use the same packages, so paths below like `stremio/StremioSync.kt` are relative to one of those folders.
 
@@ -55,6 +55,6 @@ Both use the same packages, so paths below like `stremio/StremioSync.kt` are rel
 - Automatic stream choices ("Play the best stream", season downloads, smart downloads) all go through `stremio/StreamRules.kt`.
 - Downloads on an SD card (`Downloads.sdDir`) go to the app's folder on the card; torrents finish in the engine's cache on the phone and are copied there (a rename only works within one storage).
 - Edit Gradle/TOML files without a BOM: PowerShell's `Set-Content -Encoding utf8` adds one and the version catalog stops parsing.
-- `core/` has no Android SDK on its classpath, so an Android import there doesn't compile. What only a platform can give comes in from the app: constructor parameters (`Dlna`'s `holdMulticast`, `Wikidata`'s `userAgent`) and `CoreStrings.source`.
+- `core/` has no Android SDK on its classpath, so an Android import there doesn't compile. What only a platform can give comes in from the app: interfaces (`TorrentBackend`, `DownloadHost`, `Chromecasts`, `NetworkMonitor`), constructor parameters (`CastManager`'s `holdMulticast` and `extraTv`, `Wikidata`'s `userAgent`, `Backup`'s `appVersion`) and `CoreStrings.source`. `AppGraph` wires them.
 - The app's Compose compiler can't infer the stability of `core` classes (another module): models that reach the UI carry `@Immutable` (from `androidx.compose.runtime:runtime-annotation`, annotations only). Give a new one the same, or Compose compares it by identity and recomposes more. To check, add `composeCompiler { reportsDestination = layout.buildDirectory.dir("compose_reports") }` to `app/build.gradle.kts` and run `:app:compileReleaseKotlin --rerun`.
 - Kotlin doesn't smart-cast properties of classes from another module: in `app/`, copy `entry.season` to a local `val` before checking it for null.

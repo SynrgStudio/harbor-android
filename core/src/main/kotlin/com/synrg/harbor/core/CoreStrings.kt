@@ -37,6 +37,16 @@ enum class CoreText {
     SubsLanguageBrazil,
     PlayerEpisodeLabel,
     PlayerEpisodeLabelTitled,
+    TorrentEngineMissing,
+    TorrentEngineNotStarted,
+    TorrentEngineError,
+    TorrentUnknownError,
+    TorrentNoHash,
+    TorrentNotReturned,
+    DownloadsDownloaded,
+    DownloadsFailed,
+    DownloadsNoLink,
+    DownloadsStreamResponded,
 }
 
 /** Where [CoreText] gets its words, and the locale for dates and numbers. The app sets [source] at startup. */

@@ -1,11 +1,10 @@
 package com.synrg.harbor.torrent
 
-import android.app.Application
 import androidx.compose.runtime.Immutable
-import com.synrg.harbor.R
+import com.synrg.harbor.core.CoreStrings
+import com.synrg.harbor.core.CoreText
 import com.synrg.harbor.core.HttpException
 import com.synrg.harbor.core.NetworkMonitor
-import com.synrg.harbor.core.Strings
 import com.synrg.harbor.core.await
 import com.synrg.harbor.data.SavedStream
 import kotlinx.coroutines.CoroutineScope
@@ -37,14 +36,18 @@ import java.io.IOException
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
-/** JNI surface of the Rust side (native/): it only starts librqbit and its HTTP API. */
-object NativeEngine {
-    val loaded: Boolean by lazy { runCatching { System.loadLibrary("harbor_torrent") }.isSuccess }
+/**
+ * Starts librqbit and its HTTP API, the way the platform runs it (on Android, the Rust library in
+ * native/ through JNI). Everything after that goes through the HTTP API.
+ */
+interface TorrentBackend {
+    /** False when the engine isn't in this build (or didn't load). */
+    val available: Boolean
 
     /** Starts the session (idempotent). Returns the HTTP API port on 127.0.0.1, or -1. */
-    @JvmStatic external fun start(outputDir: String, persistenceDir: String): Int
+    fun start(outputDir: String, persistenceDir: String): Int
 
-    @JvmStatic external fun lastError(): String?
+    fun lastError(): String?
 }
 
 @Immutable
@@ -55,6 +58,7 @@ data class TorrentStats(
     val state: String,
 )
 
+@Immutable
 data class TorrentStream(val url: String, val torrentId: Int, val fileName: String?, val fileIdx: Int = 0)
 
 /** How far a download's file is, and where librqbit is writing it. */
@@ -88,11 +92,15 @@ private val VIDEO_EXT = setOf("mkv", "mp4", "avi", "m4v", "webm", "mov", "ts", "
  * priority following the playback position).
  */
 class TorrentEngine(
-    private val app: Application,
+    private val backend: TorrentBackend,
+    /** The torrent cache: what is being streamed or downloaded. */
+    private val outputDir: File,
+    /** librqbit's session state. */
+    private val stateDir: File,
     private val network: NetworkMonitor,
     private val scope: CoroutineScope,
 ) {
-    val available: Boolean get() = NativeEngine.loaded
+    val available: Boolean get() = backend.available
 
     private val mutex = Mutex()
     private var port = -1
@@ -108,18 +116,15 @@ class TorrentEngine(
         .readTimeout(90, TimeUnit.SECONDS)
         .build()
 
-    private val outputDir get() = File(app.cacheDir, "torrents")
-    private val stateDir get() = File(app.filesDir, "torrent-state")
-
     private suspend fun ensureStarted(): Int = mutex.withLock {
         if (port > 0) return port
-        if (!available) throw IOException(Strings.get(R.string.torrent_engine_missing))
+        if (!available) throw IOException(CoreStrings.get(CoreText.TorrentEngineMissing))
         withContext(Dispatchers.IO) {
             outputDir.mkdirs()
             stateDir.mkdirs()
             pruneCache()
-            val p = NativeEngine.start(outputDir.absolutePath, stateDir.absolutePath)
-            if (p <= 0) throw IOException(Strings.get(R.string.torrent_engine_not_started, NativeEngine.lastError() ?: Strings.get(R.string.torrent_unknown_error)))
+            val p = backend.start(outputDir.absolutePath, stateDir.absolutePath)
+            if (p <= 0) throw IOException(CoreStrings.get(CoreText.TorrentEngineNotStarted, backend.lastError() ?: CoreStrings.get(CoreText.TorrentUnknownError)))
             port = p
         }
         watchNetwork()
@@ -165,14 +170,14 @@ class TorrentEngine(
     private suspend fun call(request: Request): JsonObject {
         val response = http.newCall(request).await()
         val text = response.use { withContext(Dispatchers.IO) { it.body.string() } }
-        if (!response.isSuccessful) throw HttpException(response.code, Strings.get(R.string.torrent_engine_error, text.take(200)))
+        if (!response.isSuccessful) throw HttpException(response.code, CoreStrings.get(CoreText.TorrentEngineError, text.take(200)))
         return json.parseToJsonElement(text).jsonObject
     }
 
     suspend fun open(stream: SavedStream): TorrentStream = add(stream).also { streaming += it.torrentId }
 
     private suspend fun add(stream: SavedStream): TorrentStream {
-        val hash = stream.infoHash ?: throw IOException(Strings.get(R.string.torrent_no_hash))
+        val hash = stream.infoHash ?: throw IOException(CoreStrings.get(CoreText.TorrentNoHash))
         val port = ensureStarted()
         val magnet = buildString {
             append("magnet:?xt=urn:btih:").append(hash)
@@ -187,7 +192,7 @@ class TorrentEngine(
                 .post(magnet.toRequestBody("text/plain".toMediaType()))
                 .build(),
         )
-        val id = added["id"]?.jsonPrimitive?.intOrNull ?: throw IOException(Strings.get(R.string.torrent_not_returned))
+        val id = added["id"]?.jsonPrimitive?.intOrNull ?: throw IOException(CoreStrings.get(CoreText.TorrentNotReturned))
         val files = added["details"]?.jsonObject?.get("files")?.jsonArray.orEmpty().mapIndexed { i, f ->
             val o = f.jsonObject
             Triple(i, o["name"]?.jsonPrimitive?.contentOrNull ?: "", o["length"]?.jsonPrimitive?.longOrNull ?: 0L)

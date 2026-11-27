@@ -108,4 +108,14 @@ val CoreText.res: Int
         CoreText.SubsLanguageBrazil -> R.string.subs_language_brazil
         CoreText.PlayerEpisodeLabel -> R.string.player_episode_label
         CoreText.PlayerEpisodeLabelTitled -> R.string.player_episode_label_titled
+        CoreText.TorrentEngineMissing -> R.string.torrent_engine_missing
+        CoreText.TorrentEngineNotStarted -> R.string.torrent_engine_not_started
+        CoreText.TorrentEngineError -> R.string.torrent_engine_error
+        CoreText.TorrentUnknownError -> R.string.torrent_unknown_error
+        CoreText.TorrentNoHash -> R.string.torrent_no_hash
+        CoreText.TorrentNotReturned -> R.string.torrent_not_returned
+        CoreText.DownloadsDownloaded -> R.string.downloads_downloaded
+        CoreText.DownloadsFailed -> R.string.downloads_failed
+        CoreText.DownloadsNoLink -> R.string.downloads_no_link
+        CoreText.DownloadsStreamResponded -> R.string.downloads_stream_responded
     }

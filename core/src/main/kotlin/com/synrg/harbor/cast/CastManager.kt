@@ -1,8 +1,6 @@
 package com.synrg.harbor.cast
 
-import android.app.Application
 import androidx.compose.runtime.Immutable
-import com.synrg.harbor.BuildConfig
 import com.synrg.harbor.player.SubtitleCue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -13,8 +11,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.OkHttpClient
 import java.io.File
+import java.net.URI
 
 /** A place to play on: a Chromecast (by its route id) or a DLNA TV. */
 @Immutable
@@ -62,20 +62,23 @@ class CastMedia(
  * themselves; everything else (torrents, downloads, DLNA, which often can't do HTTPS) goes
  * through [LanServer] on the phone.
  */
-class CastManager(private val app: Application, http: OkHttpClient, private val scope: CoroutineScope) {
+class CastManager(
+    http: OkHttpClient,
+    private val scope: CoroutineScope,
+    /** Starts Chromecast support the first time TVs are searched; null where the platform has none. */
+    private val openChromecasts: suspend () -> Chromecasts? = { null },
+    /** See [Dlna]. */
+    holdMulticast: () -> AutoCloseable? = { null },
+    /** A TV description to list even if it doesn't answer the search (the fake TV, for the emulator). */
+    private val extraTv: String? = null,
+) {
     private val lan = LanServer(http)
-    private val dlna = Dlna(http) {
-        app.getSystemService(android.net.wifi.WifiManager::class.java)?.createMulticastLock("harbor-dlna")?.run {
-            setReferenceCounted(false)
-            acquire()
-            AutoCloseable { release() }
-        }
-    }
-    private var google: GoogleCast? = null
+    private val dlna = Dlna(http, holdMulticast)
+    private var google: Chromecasts? = null
     private var googleTried = false
 
     private val dlnaDevices = MutableStateFlow<List<DlnaDevice>>(emptyList())
-    private val chromecasts = MutableStateFlow<List<GoogleCast.Route>>(emptyList())
+    private val chromecasts = MutableStateFlow<List<Chromecasts.Route>>(emptyList())
 
     private val _devices = MutableStateFlow<List<CastDevice>>(emptyList())
     val devices: StateFlow<List<CastDevice>> = _devices
@@ -104,7 +107,7 @@ class CastManager(private val app: Application, http: OkHttpClient, private val 
             _searching.value = true
             if (!googleTried) {
                 googleTried = true
-                google = GoogleCast.create(app)
+                google = openChromecasts()
             }
             google?.let { g ->
                 g.startDiscovery()
@@ -120,9 +123,9 @@ class CastManager(private val app: Application, http: OkHttpClient, private val 
         }
     }
 
-    /** Debug builds on the emulator: scripts/fake-tv.py on the PC (SSDP doesn't cross the emulator's network). */
+    /** [extraTv], when it answers. */
     private suspend fun devTv(): DlnaDevice? =
-        if (BuildConfig.DEBUG) kotlinx.coroutines.withTimeoutOrNull(1_500) { runCatching { dlna.describe("http://10.0.2.2:7320/desc.xml") }.getOrNull() } else null
+        extraTv?.let { address -> withTimeoutOrNull(1_500) { runCatching { dlna.describe(address) }.getOrNull() } }
 
     fun stopDiscovery() {
         discovery?.cancel()
@@ -265,6 +268,11 @@ class CastManager(private val app: Application, http: OkHttpClient, private val 
             else -> "video/mp4"
         }
 
-        fun localFile(url: String): File? = url.takeIf { it.startsWith("file:") }?.let { File(android.net.Uri.parse(it).path ?: return null) }
+        fun localFile(url: String): File? {
+            if (!url.startsWith("file:")) return null
+            // Saved as "file://" + path, which may hold characters a strict URI rejects.
+            val path = runCatching { URI(url).path }.getOrNull() ?: url.removePrefix("file://")
+            return File(path)
+        }
     }
 }
